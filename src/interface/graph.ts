@@ -1,8 +1,22 @@
 import EventEmitter from '@antv/event-emitter';
 import { AnimateCfg, Point } from '@antv/g-base/lib/types';
 import Graph from '../graph/graph';
-import { EdgeConfig, GraphData, IG6GraphEvent, Item, ITEM_TYPE, ModelConfig, ModelStyle, NodeConfig, Padding, ShapeStyle, TreeGraphData } from '../types';
+import {
+  EdgeConfig,
+  GraphData,
+  IG6GraphEvent,
+  Item,
+  ITEM_TYPE,
+  ModelConfig,
+  NodeConfig,
+  Padding,
+  ShapeStyle,
+  TreeGraphData,
+  LayoutConfig,
+  ModelStyle,
+} from '../types';
 import { IEdge, INode } from './item';
+import PluginBase from '../plugins/base';
 
 export interface IModeOption {
   type: string;
@@ -14,16 +28,19 @@ export interface IModeOption {
   maxZoom?: number;
   minZoom?: number;
   multiple?: boolean;
+  selectedState?: string;
+  includeEdges?: boolean;
+  direction?: 'x' | 'y';
   shouldUpdate?: (e: IG6GraphEvent) => boolean;
   shouldBegin?: (e: IG6GraphEvent) => boolean;
   shouldEnd?: (e: IG6GraphEvent) => boolean;
   onChange?: (item?: Item, judge?: boolean) => unknown;
-  formatText?: (data: {
-    [key: string]: unknown
-  }) => string;
+  onSelect?: (selectedNodes?: Item[], selectedEdges?: Item[]) => unknown;
+  onDeselect?: (selectedNodes?: Item[], selectedEdges?: Item[]) => unknown;
+  formatText?: (data: { [key: string]: unknown }) => string;
 }
 
-export type IModeType = string | IModeOption
+export type IModeType = string | IModeOption;
 
 export interface IMode {
   default?: IModeType[];
@@ -55,10 +72,6 @@ export interface GraphOptions {
    * 指定画布高度，单位为 'px'
    */
   height: number;
-  /**
-   * 渲染引擎，支持canvas和svg。
-   */
-  renderer?: 'canvas' | 'svg';
 
   fitView?: boolean;
 
@@ -82,7 +95,7 @@ export interface GraphOptions {
 
   groupStyle?: {
     style?: {
-      [key: string]: ShapeStyle
+      [key: string]: ShapeStyle;
     };
   };
 
@@ -117,9 +130,9 @@ export interface GraphOptions {
     color?: string;
   } & ModelStyle;
 
-  nodeStateStyles?: ModelStyle;
+  nodeStateStyles?: { [key: string]: ShapeStyle };
 
-  edgeStateStyles?: ModelStyle;
+  edgeStateStyles?: { [key: string]: ShapeStyle };
 
   /**
    * 向 graph 注册插件。插件机制请见：plugin
@@ -144,7 +157,7 @@ export interface GraphOptions {
    * 默认值 10
    */
   maxZoom?: number;
-  
+
   groupType?: string;
 
   /**
@@ -155,10 +168,10 @@ export interface GraphOptions {
 
 // Graph 配置项中 state 的类型
 export interface IStates {
-  [key: string]: INode[]
+  [key: string]: INode[];
 }
 export interface IGraph extends EventEmitter {
-  getDefaultCfg(): GraphOptions;
+  getDefaultCfg(): Partial<GraphOptions>;
   get<T = any>(key: string): T;
   set<T = any>(key: string | object, value?: T): Graph;
   findById(id: string): Item;
@@ -441,7 +454,7 @@ export interface IGraph extends EventEmitter {
    * @param {(item: T, index: number) => T} fn 指定规则
    * @return {T} 元素实例
    */
-  find<T extends Item>(type: ITEM_TYPE, fn: (item: T, index: number) => boolean): T;
+  find<T extends Item>(type: ITEM_TYPE, fn: (item: T, index?: number) => boolean): T | undefined;
 
   /**
    * 查找所有满足规则的元素
@@ -449,7 +462,7 @@ export interface IGraph extends EventEmitter {
    * @param {string} fn 指定规则
    * @return {array} 元素实例
    */
-  findAll<T extends Item>(type: ITEM_TYPE, fn: (item: T, index: number) => boolean): T[];
+  findAll<T extends Item>(type: ITEM_TYPE, fn: (item: T, index?: number) => boolean): T[];
 
   /**
    * 查找所有处于指定状态的元素
@@ -477,7 +490,7 @@ export interface IGraph extends EventEmitter {
    * 若 cfg 含有 type 字段或为 String 类型，且与现有布局方法不同，则更换布局
    * 若 cfg 不包括 type ，则保持原有布局方法，仅更新布局配置项
    */
-  updateLayout(cfg): void;
+  updateLayout(cfg: LayoutConfig): void;
 
   /**
    * 重新以当前示例中配置的属性进行一次布局
@@ -488,13 +501,13 @@ export interface IGraph extends EventEmitter {
    * 添加插件
    * @param {object} plugin 插件实例
    */
-  addPlugin(plugin): void;
+  addPlugin(plugin: PluginBase): void;
 
   /**
    * 添加插件
    * @param {object} plugin 插件实例
    */
-  removePlugin(plugin): void;
+  removePlugin(plugin: PluginBase): void;
 
   /**
    * 收起分组
@@ -541,14 +554,22 @@ export interface ITreeGraph extends IGraph {
    * @param {TreeGraphData | undefined} parent 从哪个节点开始寻找，为空时从根节点开始查找
    * @return {TreeGraphData} 对应源数据
    */
-  findDataById(id: string, parent?: TreeGraphData | undefined): TreeGraphData;
+  findDataById(id: string, parent?: TreeGraphData | undefined): TreeGraphData | null;
 
   /**
    * 布局动画接口，用于数据更新时做节点位置更新的动画
    * @param {TreeGraphData} data 更新的数据
    * @param {function} onFrame 定义节点位置更新时如何移动
    */
-  layoutAnimate(data: TreeGraphData, onFrame?: (item: Item, ratio: number, originAttrs?: ShapeStyle, data?: TreeGraphData) => unknown): void;
+  layoutAnimate(
+    data: TreeGraphData,
+    onFrame?: (
+      item: Item,
+      ratio: number,
+      originAttrs?: ShapeStyle,
+      data?: TreeGraphData,
+    ) => unknown,
+  ): void;
 
   /**
    * 立即停止布局动画

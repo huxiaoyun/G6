@@ -4,12 +4,13 @@ const resolve = require('path').resolve;
 
 module.exports = {
   entry: {
-    g6: './src/index.ts'
+    g6: './src/index.ts',
   },
   output: {
     filename: '[name].min.js',
     library: 'G6',
     libraryTarget: 'umd',
+    libraryExport: 'default',
     path: resolve(process.cwd(), 'dist/'),
   },
   resolve: {

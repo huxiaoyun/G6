@@ -1,7 +1,7 @@
 language: node_js
 
 node_js:
-  - "10"
+  - '10'
 
 env:
   - NODE_ENV=test
@@ -18,4 +18,4 @@ install:
   - npm install
 
 script:
-  - npm run ci
+  - npm run ci && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage

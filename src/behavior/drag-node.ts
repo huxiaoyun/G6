@@ -9,7 +9,7 @@ import { Point } from '@antv/g-base/lib/types';
 import deepMix from '@antv/util/lib/deep-mix';
 import { INode } from '../interface/item';
 import { G6Event, IG6GraphEvent, Item, NodeConfig } from '../types';
-import Global from '../global'
+import Global from '../global';
 
 export default {
   getDefaultCfg(): object {
@@ -17,14 +17,14 @@ export default {
       updateEdge: true,
       delegateStyle: {},
       // 是否开启delegate
-      enableDelegate: false
+      enableDelegate: false,
     };
   },
   getEvents(): { [key in G6Event]?: string } {
     return {
       'node:dragstart': 'onDragStart',
       'node:drag': 'onDrag',
-      'node:dragend': 'onDragEnd'
+      'node:dragend': 'onDragEnd',
     };
   },
   onDragStart(e: IG6GraphEvent) {
@@ -38,7 +38,7 @@ export default {
     }
 
     // 如果拖动的target 是linkPoints / anchorPoints 则不允许拖动
-    const target = e.target;
+    const { target } = e;
     if (target) {
       const isAnchorPoint = target.get('isAnchorPoint');
       if (isAnchorPoint) {
@@ -46,7 +46,7 @@ export default {
       }
     }
 
-    const graph = this.graph;
+    const { graph } = this;
 
     this.targets = [];
 
@@ -64,28 +64,25 @@ export default {
     // 只拖动当前节点
     if (dragNodes.length === 0) {
       this.target = item;
-    } else {
+    } else if (nodes.length > 1) {
       // 拖动多个节点
-      if (nodes.length > 1) {
-        nodes.forEach(node => {
-          const locked = node.hasLocked();
-          if (!locked) {
-            this.targets.push(node);
-          }
-        });
-      } else {
-        this.targets.push(item);
-      }
+      nodes.forEach(node => {
+        const locked = node.hasLocked();
+        if (!locked) {
+          this.targets.push(node);
+        }
+      });
+    } else {
+      this.targets.push(item);
     }
 
     this.origin = {
       x: e.x,
-      y: e.y
+      y: e.y,
     };
 
     this.point = {};
     this.originPoint = {};
-
   },
   onDrag(e: IG6GraphEvent) {
     if (!this.origin) {
@@ -94,7 +91,7 @@ export default {
     if (!this.shouldUpdate(this, e)) {
       return;
     }
-    const graph = this.graph;
+    const { graph } = this;
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
 
@@ -120,7 +117,7 @@ export default {
       return;
     }
 
-    const graph = this.graph;
+    const { graph } = this;
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
 
@@ -154,13 +151,13 @@ export default {
     graph.setAutoPaint(autoPaint);
   },
   update(item: Item, e: IG6GraphEvent, force: boolean) {
-    const origin = this.origin;
+    const { origin } = this;
     const model: NodeConfig = item.get('model');
     const nodeId: string = item.get('id');
     if (!this.point[nodeId]) {
       this.point[nodeId] = {
         x: model.x,
-        y: model.y
+        y: model.y,
       };
     }
 
@@ -204,9 +201,9 @@ export default {
             height,
             x: cx,
             y: cy,
-            ...attrs
+            ...attrs,
           },
-          name: 'rect-delegate-shape'
+          name: 'rect-delegate-shape',
         });
       } else if (this.target) {
         this.delegateRect = parent.addShape('rect', {
@@ -215,27 +212,26 @@ export default {
             height: bbox.height,
             x: x + bbox.x,
             y: y + bbox.y,
-            ...attrs
+            ...attrs,
           },
-          name: 'rect-delegate-shape'
+          name: 'rect-delegate-shape',
         });
       }
       this.delegateRect.set('capture', false);
-    } else {
-      if (this.targets.length > 0) {
-        const clientX = e.x - this.origin.x + this.originPoint.minX;
-        const clientY = e.y - this.origin.y + this.originPoint.minY;
-        this.delegateRect.attr({
-          x: clientX,
-          y: clientY
-        });
-      } else if (this.target) {
-        this.delegateRect.attr({
-          x: x + bbox.x,
-          y: y + bbox.y
-        });
-      }
+    } else if (this.targets.length > 0) {
+      const clientX = e.x - this.origin.x + this.originPoint.minX;
+      const clientY = e.y - this.origin.y + this.originPoint.minY;
+      this.delegateRect.attr({
+        x: clientX,
+        y: clientY,
+      });
+    } else if (this.target) {
+      this.delegateRect.attr({
+        x: x + bbox.x,
+        y: y + bbox.y,
+      });
     }
+
     if (this.target) {
       this.target.set('delegateShape', this.delegateRect);
     }
@@ -248,7 +244,7 @@ export default {
    * @return {object} 计算出来的delegate坐标信息及宽高
    */
   calculationGroupPosition() {
-    const graph = this.graph;
+    const { graph } = this;
 
     const nodes = graph.findAllByState('node', 'selected');
 
@@ -258,8 +254,8 @@ export default {
     let maxy = -Infinity;
 
     // 获取已节点的所有最大最小x y值
-    for (const element of nodes) {
-      // const element = isString(id) ? graph.findById(id) : id;
+    for (let i = 0; i < nodes.length; i++) {
+      const element = nodes[i];
       const bbox = element.getBBox();
       const { minX, minY, maxX, maxY } = bbox;
       if (minX < minx) {
@@ -278,6 +274,7 @@ export default {
         maxy = maxY;
       }
     }
+
     const x = Math.floor(minx);
     const y = Math.floor(miny);
     const width = Math.ceil(maxx) - Math.floor(minx);
@@ -289,7 +286,7 @@ export default {
       width,
       height,
       minX: minx,
-      minY: miny
+      minY: miny,
     };
-  }
+  },
 };

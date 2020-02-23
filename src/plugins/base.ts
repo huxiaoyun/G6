@@ -1,21 +1,23 @@
-
-import deepMix from '@antv/util/lib/deep-mix'
-import each from '@antv/util/lib/each'
-import wrapBehavior from '@antv/util/lib/wrap-behavior'
+import deepMix from '@antv/util/lib/deep-mix';
+import each from '@antv/util/lib/each';
+import wrapBehavior from '@antv/util/lib/wrap-behavior';
 import Graph from '../graph/graph';
 
 export interface IPluginBaseConfig {
   container?: HTMLDivElement | null;
   className?: string;
   graph?: Graph;
+  [key: string]: any;
+}
+
+interface EventMapType {
+  [key: string]: any;
 }
 
 export default abstract class PluginBase {
-  private _events: {
-    [key: string]: any
-  }
-  public _cfgs: IPluginBaseConfig
-  public destroyed: boolean
+  private _events: EventMapType;
+  public _cfgs: IPluginBaseConfig;
+  public destroyed: boolean;
 
   /**
    * 插件基类的构造函数
@@ -23,6 +25,8 @@ export default abstract class PluginBase {
    */
   constructor(cfgs?: IPluginBaseConfig) {
     this._cfgs = deepMix(this.getDefaultCfgs(), cfgs);
+    this._events = {};
+    this.destroyed = false;
   }
 
   /**
@@ -42,7 +46,7 @@ export default abstract class PluginBase {
 
     const events = self.getEvents();
 
-    const bindEvents = {};
+    const bindEvents: EventMapType = {};
 
     each(events, (v, k) => {
       const event = wrapBehavior(self, v);
@@ -98,8 +102,8 @@ export default abstract class PluginBase {
     each(events, (v, k) => {
       graph.off(k, v);
     });
-    this._events = null;
-    this._cfgs = null;
+    (this._events as EventMapType | null) = null;
+    (this._cfgs as IPluginBaseConfig | null) = null;
     this.destroyed = true;
   }
 }

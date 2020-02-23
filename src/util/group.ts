@@ -2,10 +2,11 @@ import groupBy, { ObjectType } from '@antv/util/lib/group-by';
 import { GraphData, GroupConfig, GroupNodeIds } from '../types';
 
 export const getAllNodeInGroups = (data: GraphData): GroupNodeIds => {
-  const groupById: ObjectType<GroupConfig> = groupBy(data.groups, 'id');
-  const groupByParentId: ObjectType<GroupConfig> = groupBy(data.groups, 'parentId');
+  const groupById: ObjectType<GroupConfig> = groupBy(data.groups!, 'id');
+  const groupByParentId: ObjectType<GroupConfig> = groupBy(data.groups!, 'parentId');
 
   const result: { [key: string]: GroupConfig[] } = {};
+
   for (const parentId in groupByParentId) {
     if (!parentId) {
       continue;
@@ -32,7 +33,7 @@ export const getAllNodeInGroups = (data: GraphData): GroupNodeIds => {
     if (!groupId || groupId === 'undefined') {
       continue;
     }
-    const subGroupIds = allGroupsId[groupId].map((node) => node.id);
+    const subGroupIds = allGroupsId[groupId].map(node => node.id);
 
     // const nodesInGroup = data.nodes.filter(node => node.groupId === groupId).map(node => node.id);
     groupIds[groupId] = subGroupIds;
@@ -53,13 +54,15 @@ export const getAllNodeInGroups = (data: GraphData): GroupNodeIds => {
     const parentSubGroupIds: string[] = [];
 
     for (const subId of subGroupIds) {
-      const tmpGroupId = allGroupsId[subId].map((node) => node.id);
+      const tmpGroupId = allGroupsId[subId].map(node => node.id);
       // const tmpNodes = data.nodes.filter(node => node.groupId === subId).map(node => node.id);
       parentSubGroupIds.push(...tmpGroupId);
     }
 
     const nodesInGroup = data.nodes
-      ? data.nodes.filter((node) => parentSubGroupIds.indexOf(node.groupId!) > -1).map((node) => node.id)
+      ? data.nodes
+          .filter(node => parentSubGroupIds.indexOf(node.groupId!) > -1)
+          .map(node => node.id)
       : [];
     groupNodes[groupId] = nodesInGroup;
   }

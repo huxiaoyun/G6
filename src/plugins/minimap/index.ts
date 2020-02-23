@@ -1,17 +1,18 @@
-import GCanvas from '@antv/g-canvas/lib/canvas'
-import Base, { IPluginBaseConfig } from  '../base'
-import isString from '@antv/util/lib/is-string'
-import createDOM from '@antv/dom-util/lib/create-dom'
-import modifyCSS from '@antv/dom-util/lib/modify-css'
-import isNil from '@antv/util/lib/is-nil'
-import each from '@antv/util/lib/each'
+import GCanvas from '@antv/g-canvas/lib/canvas';
+import Base, { IPluginBaseConfig } from '../base';
+import isString from '@antv/util/lib/is-string';
+import createDOM from '@antv/dom-util/lib/create-dom';
+import modifyCSS from '@antv/dom-util/lib/modify-css';
+import isNil from '@antv/util/lib/is-nil';
+import each from '@antv/util/lib/each';
 import Graph from '../../graph/graph';
 import { Matrix, ShapeStyle } from '../../types';
-import { transform, mat3 } from '@antv/matrix-util'
+import { transform, mat3 } from '@antv/matrix-util';
 import { Point } from '@antv/g-math/lib/types';
 import { IGroup } from '@antv/g-base/lib/interfaces';
+import GraphEvent from '@antv/g-base/lib/event/graph-event';
 
-const max = Math.max;
+const { max } = Math;
 
 const DEFAULT_MODE = 'default';
 const KEYSHAPE_MODE = 'keyShape';
@@ -27,7 +28,7 @@ interface MiniMapConfig extends IPluginBaseConfig {
 
 export default class MiniMap extends Base {
   constructor(cfg: MiniMapConfig) {
-    super(cfg)
+    super(cfg);
   }
 
   public getDefaultCfgs(): MiniMapConfig {
@@ -35,14 +36,14 @@ export default class MiniMap extends Base {
       container: null,
       className: 'g6-minimap',
       viewportClassName: 'g6-minimap-viewport',
-      // Minimap 中默认展示和主图一样的内容，KeyShape 只展示节点和边的keyshape部分，delegate表示展示自定义的rect，用户可自定义样式
+      // Minimap 中默认展示和主图一样的内容，KeyShape 只展示节点和边的 key shape 部分，delegate表示展示自定义的rect，用户可自定义样式
       type: 'default',
-      size: [ 200, 120 ],
+      size: [200, 120],
       delegateStyle: {
         fill: '#40a9ff',
-        stroke: '#096dd9'
+        stroke: '#096dd9',
       },
-      refresh: true
+      refresh: true,
     };
   }
 
@@ -51,7 +52,7 @@ export default class MiniMap extends Base {
       beforepaint: 'updateCanvas',
       beforeanimate: 'disableRefresh',
       afteranimate: 'enableRefresh',
-      viewportchange: 'disableOneRefresh'
+      viewportchange: 'disableOneRefresh',
     };
   }
 
@@ -70,24 +71,23 @@ export default class MiniMap extends Base {
   }
 
   private initViewport() {
-    const cfgs:MiniMapConfig  = this._cfgs as MiniMapConfig;
-    const size = cfgs.size;
-    const graph = cfgs.graph;
+    const cfgs: MiniMapConfig = this._cfgs as MiniMapConfig;
+    const { size, graph } = cfgs;
     const canvas = this.get('canvas');
-    
+
     const containerDOM = canvas.get('container');
     const viewport = createDOM(`<div class=${cfgs.viewportClassName} 
       style='position:absolute;
         left:0;
         top:0;
         box-sizing:border-box;
-        border: 2px solid #1980ff'></div>`)
-    
+        border: 2px solid #1980ff'></div>`);
+
     // 计算拖拽水平方向距离
     let x = 0;
-    // 计算拖拽垂直方向距离        
-    let y = 0;           
-    // 是否在拖拽minimap的视口   
+    // 计算拖拽垂直方向距离
+    let y = 0;
+    // 是否在拖拽minimap的视口
     let dragging = false;
     // 缓存viewport当前对于画布的x
     let left = 0;
@@ -100,78 +100,94 @@ export default class MiniMap extends Base {
     let ratio = 0;
     let zoom = 0;
 
-    containerDOM.addEventListener('mousedown', e => {
-      cfgs.refresh = false;
-      if (e.target !== viewport) {
-        return;
-      }
+    containerDOM.addEventListener(
+      'mousedown',
+      (e: GraphEvent) => {
+        cfgs.refresh = false;
+        if (e.target !== viewport) {
+          return;
+        }
 
-      // 如果视口已经最大了，不需要拖拽
-      const style = viewport.style;
-      left = parseInt(style.left, 10);
-      top = parseInt(style.top, 10);
-      width = parseInt(style.width, 10);
-      height = parseInt(style.height, 10);
+        // 如果视口已经最大了，不需要拖拽
+        const { style } = viewport;
+        left = parseInt(style.left, 10);
+        top = parseInt(style.top, 10);
+        width = parseInt(style.width, 10);
+        height = parseInt(style.height, 10);
 
-      if (width > size[0] || height > size[1]) {
-        return;
-      }
+        if (width > size[0] || height > size[1]) {
+          return;
+        }
 
-      zoom = graph.getZoom();
-      ratio = this.get('ratio');
+        zoom = graph!.getZoom();
+        ratio = this.get('ratio');
 
-      dragging = true;
-      x = e.clientX;
-      y = e.clientY;
-    }, false);
+        dragging = true;
+        x = e.clientX;
+        y = e.clientY;
+      },
+      false,
+    );
 
-    containerDOM.addEventListener('mousemove', e => {
-      if (!dragging || isNil(e.clientX) || isNil(e.clientY)) {
-        return;
-      }
+    containerDOM.addEventListener(
+      'mousemove',
+      (e: GraphEvent) => {
+        if (!dragging || isNil(e.clientX) || isNil(e.clientY)) {
+          return;
+        }
 
-      let dx = x - e.clientX;
-      let dy = y - e.clientY;
+        let dx = x - e.clientX;
+        let dy = y - e.clientY;
 
-      // 若视口移动到最左边或最右边了,仅移动到边界
-      if (left - dx < 0) {
-        dx = left;
-      } else if (left - dx + width > size[0]) {
-        dx = left + width - size[0];
-      }
+        // 若视口移动到最左边或最右边了,仅移动到边界
+        if (left - dx < 0) {
+          dx = left;
+        } else if (left - dx + width > size[0]) {
+          dx = left + width - size[0];
+        }
 
-      // 若视口移动到最上或最下边了，仅移动到边界
-      if (top - dy < 0) {
-        dy = top;
-      } else if (top - dy + height > size[1]) {
-        dy = top + height - size[1];
-      }
+        // 若视口移动到最上或最下边了，仅移动到边界
+        if (top - dy < 0) {
+          dy = top;
+        } else if (top - dy + height > size[1]) {
+          dy = top + height - size[1];
+        }
 
-      left -= dx;
-      top -= dy;
+        left -= dx;
+        top -= dy;
 
-      // 先移动视口，避免移动到边上以后出现视口闪烁
-      modifyCSS(viewport, {
-        left: `${left}px`,
-        top: `${top}px`
-      });
+        // 先移动视口，避免移动到边上以后出现视口闪烁
+        modifyCSS(viewport, {
+          left: `${left}px`,
+          top: `${top}px`,
+        });
 
-      // graph 移动需要偏移量 dx/dy * 缩放比例才会得到正确的移动距离
-      graph.translate(dx * zoom / ratio, dy * zoom / ratio);
+        // graph 移动需要偏移量 dx/dy * 缩放比例才会得到正确的移动距离
+        graph!.translate((dx * zoom) / ratio, (dy * zoom) / ratio);
 
-      x = e.clientX;
-      y = e.clientY;
-    }, false);
+        x = e.clientX;
+        y = e.clientY;
+      },
+      false,
+    );
 
-    containerDOM.addEventListener('mouseleave', () => {
-      dragging = false;
-      cfgs.refresh = true;
-    }, false);
+    containerDOM.addEventListener(
+      'mouseleave',
+      () => {
+        dragging = false;
+        cfgs.refresh = true;
+      },
+      false,
+    );
 
-    containerDOM.addEventListener('mouseup', () => {
-      dragging = false;
-      cfgs.refresh = true;
-    }, false);
+    containerDOM.addEventListener(
+      'mouseup',
+      () => {
+        dragging = false;
+        cfgs.refresh = true;
+      },
+      false,
+    );
 
     this.set('viewport', viewport);
     containerDOM.appendChild(viewport);
@@ -190,7 +206,6 @@ export default class MiniMap extends Base {
     const graphHeight: number = graph.get('height');
     const topLeft: Point = graph.getPointByCanvas(0, 0);
     const bottomRight: Point = graph.getPointByCanvas(graphWidth, graphHeight);
-
     const viewport: HTMLElement = this.get('viewport');
     if (!viewport) {
       this.initViewport();
@@ -223,7 +238,7 @@ export default class MiniMap extends Base {
     } else if (left < 0) {
       correctLeft = 0;
     } else if (left + width > size[0]) {
-      correctLeft = `${size[0] - width}px`
+      correctLeft = `${size[0] - width}px`;
     }
 
     if (top >= 0 && top + height <= size[1]) {
@@ -237,8 +252,8 @@ export default class MiniMap extends Base {
     modifyCSS(viewport, {
       left: correctLeft,
       top: correctTop,
-      width: width + 'px',
-      height: height + 'px'
+      width: `${width}px`,
+      height: `${height}px`,
     });
   }
 
@@ -246,32 +261,34 @@ export default class MiniMap extends Base {
    * 将主图上的图形完全复制到小图
    */
   private updateGraphShapes() {
-    // const graph: Graph = this.get('graph');
-    const graph = this._cfgs.graph;
+    const { graph } = this._cfgs;
     const canvas: GCanvas = this.get('canvas');
-    const graphGroup = graph.get('group');
+    const graphGroup = graph!.get('group');
+    if (graphGroup.destroyed) return;
     const clonedGroup = graphGroup.clone();
-    
     clonedGroup.resetMatrix();
-    // clonedGroup.setMatrix(graph.get('group').getMatrix());
-    // canvas.set('localRefresh', false)
-    canvas.clear()
-    canvas.add(clonedGroup)
+
+    canvas.clear();
+    canvas.add(clonedGroup);
   }
 
-   // 仅在minimap上绘制keyShape
+  // 仅在minimap上绘制keyShape
   // FIXME 如果用户自定义绘制了其他内容，minimap上就无法画出
   private updateKeyShapes() {
-    const graph = this._cfgs.graph;
+    const { graph } = this._cfgs;
     const canvas: GCanvas = this.get('canvas');
     let group: IGroup = canvas.get('children')[0];
 
     if (!group) {
       group = canvas.addGroup();
-      group.setMatrix(graph.get('group').getMatrix());
+      let matrix = graph!.get('group').getMatrix();
+      if (!matrix) {
+        matrix = mat3.create();
+      }
+      group.setMatrix(matrix);
     }
 
-    const nodes = graph.getNodes();
+    const nodes = graph!.getNodes();
     group.clear();
 
     this.showGraphEdgeKeyShape(group);
@@ -280,7 +297,11 @@ export default class MiniMap extends Base {
     each(nodes, node => {
       if (node.isVisible()) {
         const parent = group.addGroup();
-        parent.setMatrix(node.get('group').attr('matrix'));
+        let nodeMatrix = node.get('group').attr('matrix');
+        if (!nodeMatrix) {
+          nodeMatrix = mat3.create();
+        }
+        parent.setMatrix(nodeMatrix);
         parent.add(node.get('keyShape').clone());
       }
     });
@@ -290,7 +311,7 @@ export default class MiniMap extends Base {
    * Minimap 中展示自定义的rect，支持用户自定义样式和节点大小
    */
   private updateDelegateShapes() {
-    const graph = this._cfgs.graph;
+    const { graph } = this._cfgs;
     const canvas: GCanvas = this.get('canvas');
     const group = canvas.get('children')[0] || canvas.addGroup();
     const delegateStyle = this.get('delegateStyle');
@@ -299,7 +320,7 @@ export default class MiniMap extends Base {
 
     this.showGraphEdgeKeyShape(group);
 
-    each(graph.getNodes(), node => {
+    each(graph!.getNodes(), (node) => {
       if (node.isVisible()) {
         const bbox = node.getBBox();
         group.addShape('rect', {
@@ -308,9 +329,9 @@ export default class MiniMap extends Base {
             y: bbox.minY,
             width: bbox.width,
             height: bbox.height,
-            ...delegateStyle
+            ...delegateStyle,
           },
-          name: 'minimap-node-shape'
+          name: 'minimap-node-shape',
         });
       }
     });
@@ -320,7 +341,7 @@ export default class MiniMap extends Base {
    * 设置只显示 edge 的keyShape
    * @param group IGroup 实例
    */
-  private showGraphEdgeKeyShape(group) {
+  private showGraphEdgeKeyShape(group: IGroup) {
     const graph = this.get('graph');
     each(graph.getEdges(), edge => {
       if (edge.isVisible()) {
@@ -330,7 +351,7 @@ export default class MiniMap extends Base {
   }
 
   public init() {
-    this.initContainer()
+    this.initContainer();
   }
 
   /**
@@ -342,13 +363,12 @@ export default class MiniMap extends Base {
     const size: number[] = self.get('size');
     const className: string = self.get('className');
     let parentNode: string | HTMLElement = self.get('container');
-    // const container: HTMLElement = createDOM('<div class="' + className + '" style="width:' + size[0] + 'px; height:' + size[1] + 'px"></div>');
     const container: HTMLElement = createDOM(
-      `<div class='${className}' style='width: ${size[0]}px; height: ${size[1]}px'></div>`
-    )
+      `<div class='${className}' style='width: ${size[0]}px; height: ${size[1]}px'></div>`,
+    );
 
     if (isString(parentNode)) {
-      parentNode = document.getElementById(parentNode);
+      parentNode = document.getElementById(parentNode) as HTMLElement;
     }
 
     if (parentNode) {
@@ -359,23 +379,24 @@ export default class MiniMap extends Base {
 
     self.set('container', container);
 
-    const containerDOM = createDOM('<div class="g6-minimap-container" style="position: relative;"></div>');
+    const containerDOM = createDOM(
+      '<div class="g6-minimap-container" style="position: relative;"></div>',
+    );
     container.appendChild(containerDOM);
 
     const canvas = new GCanvas({
       container: containerDOM,
       width: size[0],
       height: size[1],
-      pixelRatio: graph.get('pixelRatio')
     });
 
     self.set('canvas', canvas);
     self.updateCanvas();
   }
 
-  public updateCanvas()  {
+  public updateCanvas() {
     // 如果是在动画，则不刷新视图
-    const isRefresh: boolean = this.get('refresh')
+    const isRefresh: boolean = this.get('refresh');
     if (!isRefresh) {
       return;
     }
@@ -391,8 +412,8 @@ export default class MiniMap extends Base {
     const canvas: GCanvas = this.get('canvas');
     const type: string = this.get('type');
 
-    if(canvas.destroyed) {
-      return
+    if (canvas.destroyed) {
+      return;
     }
 
     switch (type) {
@@ -405,19 +426,17 @@ export default class MiniMap extends Base {
       case DELEGATE_MODE:
         this.updateDelegateShapes();
         break;
-      default:
-        this.updateGraphShapes();
     }
 
-    const bbox = canvas.getBBox();
-    
-    const miniMapWidth = canvas.get('width')
-    const miniMapHeight = canvas.get('height')
+    const group = canvas.get('children')[0];
+    if(!group) return;
 
-    let width = max(miniMapWidth, graph.get('width'));
-    let height = max(miniMapHeight, graph.get('height'));
+    const bbox = group.getBBox();
 
-    if(Number.isFinite(bbox.width)) {
+    let width = graph.get('width');
+    let height = graph.get('height'); 
+
+    if (Number.isFinite(bbox.width)) {
       // 刷新后bbox可能会变，需要重置画布矩阵以缩放到合适的大小
       width = max(bbox.width, graph.get('width'));
       height = max(bbox.height, graph.get('height'));
@@ -425,31 +444,31 @@ export default class MiniMap extends Base {
 
     const ratio = Math.min(size[0] / width, size[1] / height);
 
-    canvas.resetMatrix();
-    let matrix: Matrix = mat3.create(); 
+    group.resetMatrix();
+    let matrix: Matrix = mat3.create();
 
     let minX = 0;
     let minY = 0;
     // 如果bbox为负，先平移到左上角
-    if(Number.isFinite(bbox.minX)) {
+    if (Number.isFinite(bbox.minX)) {
       minX = bbox.minX > 0 ? 0 : -bbox.minX;
     }
 
-    if(Number.isFinite(bbox.minY)) {
+    if (Number.isFinite(bbox.minY)) {
       minY = bbox.minY > 0 ? 0 : -bbox.minY;
     }
-    
+
     // 缩放到适合视口后, 平移到画布中心
     const dx = (size[0] - width * ratio) / 2;
     const dy = (size[1] - height * ratio) / 2;
 
     matrix = transform(matrix, [
-      [ 't',  minX, minY ],
-      [ 's',  ratio, ratio ],
-      [ 't',  dx, dy ]
-    ])
+      ['t', minX, minY],
+      ['s', ratio, ratio],
+      ['t', dx, dy],
+    ]);
 
-    canvas.setMatrix(matrix)
+    group.setMatrix(matrix);
 
     // 更新minimap视口
     this.set('ratio', ratio);

@@ -1,17 +1,12 @@
 import Group from '@antv/g-canvas/lib/group';
-// import ShapeBase from '@antv/g-canvas/lib/shape/base';
-// import Path from "@antv/g/lib/shapes/path";
 import Path from '@antv/g-canvas/lib/shape/path';
-// import { IShape } from '@antv/g-canvas/lib/interfaces';
-import { vec2 } from '@antv/matrix-util';
+import { vec2, mat3 } from '@antv/matrix-util';
 import each from '@antv/util/lib/each';
 import Global from '../global';
 import { EdgeData, IBBox, IPoint, IShapeBase, LabelStyle, TreeGraphData } from '../types';
 import { applyMatrix } from './math';
 
-const PI: number = Math.PI;
-const sin: (x: number) => number = Math.sin;
-const cos: (x: number) => number = Math.cos;
+const { PI, sin, cos } = Math;
 
 // 一共支持8个方向的自环，每个环占的角度是45度，在计算时再二分，为22.5度
 const SELF_LINK_SIN: number = sin(PI / 8);
@@ -29,7 +24,10 @@ export const getBBox = (element: IShapeBase, group: Group): IBBox => {
   };
   // 根据父元素变换矩阵
   if (group) {
-    const matrix = group.getMatrix();
+    let matrix = group.getMatrix();
+    if (!matrix) {
+      matrix = mat3.create();
+    }
     leftTop = applyMatrix(leftTop, matrix);
     rightBottom = applyMatrix(rightBottom, matrix);
   }
@@ -56,7 +54,8 @@ export const getBBox = (element: IShapeBase, group: Group): IBBox => {
 export const getLoopCfgs = (cfg: EdgeData): EdgeData => {
   const item = cfg.sourceNode || cfg.targetNode;
   const container: Group = item.get('group');
-  const containerMatrix = container.getMatrix();
+  let containerMatrix = container.getMatrix();
+  if (!containerMatrix) containerMatrix = mat3.create();
 
   const keyShape: IShapeBase = item.getKeyShape();
   const bbox: IBBox = keyShape.getBBox();
@@ -212,7 +211,7 @@ export const getLabelPosition = (
   percent: number,
   refX: number,
   refY: number,
-  rotate: boolean
+  rotate: boolean,
 ): LabelStyle => {
   const TAN_OFFSET = 0.0001;
   let vector: number[][] = [];
@@ -228,7 +227,7 @@ export const getLabelPosition = (
   // 头尾最可能，放在最前面，使用 g path 上封装的方法
   if (percent < TAN_OFFSET) {
     vector = pathShape.getStartTangent().reverse();
-  } else if (percent > (1 - TAN_OFFSET)) {
+  } else if (percent > 1 - TAN_OFFSET) {
     vector = pathShape.getEndTangent();
   } else {
     // 否则取指定位置的点,与少量偏移的点，做微分向量
@@ -282,7 +281,7 @@ const traverse = <T extends { children?: T[] }>(data: T, fn: (param: T) => boole
   }
 
   if (data.children) {
-    each(data.children, (child) => {
+    each(data.children, child => {
       traverse(child, fn);
     });
   }
@@ -306,7 +305,10 @@ export type TreeGraphDataWithPosition = TreeGraphData & {
  * @param data Tree graph data
  * @param layout
  */
-export const radialLayout = (data: TreeGraphDataWithPosition, layout?: string): TreeGraphDataWithPosition => {
+export const radialLayout = (
+  data: TreeGraphDataWithPosition,
+  layout?: string,
+): TreeGraphDataWithPosition => {
   // 布局方式有 H / V / LR / RL / TB / BT
   const VERTICAL_LAYOUTS: string[] = ['V', 'TB', 'BT'];
   const min: IPoint = {
@@ -349,7 +351,7 @@ export const radialLayout = (data: TreeGraphDataWithPosition, layout?: string): 
     return data;
   }
 
-  traverseTree(data, (node) => {
+  traverseTree(data, node => {
     const radial = ((node[radScale] - min[radScale]) / radDiff) * (PI * 2 - avgRad) + avgRad;
     const r = Math.abs(rScale === 'x' ? node.x - data.x : node.y - data.y);
     node.x = r * Math.cos(radial);

@@ -1,44 +1,47 @@
-import each from '@antv/util/lib/each'
+import each from '@antv/util/lib/each';
 import { G6Event, IG6GraphEvent } from '../types';
-import { isString } from '@antv/util';
 
 const DEFAULT_TRIGGER = 'shift';
-const ALLOW_EVENTS = [ 'shift', 16, 'ctrl', 17, 'alt', 18 ];
+const ALLOW_EVENTS = ['shift', 16, 'ctrl', 17, 'alt', 18];
 
 export default {
   getDefaultCfg(): object {
     return {
       multiple: true,
-      trigger: DEFAULT_TRIGGER
+      trigger: DEFAULT_TRIGGER,
     };
   },
   getEvents(): { [key in G6Event]?: string } {
+    const self = this as any;
     // 检测输入是否合法
-    if (!(ALLOW_EVENTS.indexOf(this.trigger.toLowerCase()) > -1)) {
-      this.trigger = DEFAULT_TRIGGER;
-      console.warn('Behavior brush-select 的 trigger 参数不合法，请输入 \'drag\'、\'shift\'、\'ctrl\' 或 \'alt\'');
+    if (!(ALLOW_EVENTS.indexOf(self.trigger.toLowerCase()) > -1)) {
+      self.trigger = DEFAULT_TRIGGER;
+      // eslint-disable-next-line no-console
+      console.warn(
+        "Behavior brush-select 的 trigger 参数不合法，请输入 'drag'、'shift'、'ctrl' 或 'alt'",
+      );
     }
-    if (!this.multiple) {
+    if (!self.multiple) {
       return {
         'node:click': 'onClick',
-        'canvas:click': 'onCanvasClick'
+        'canvas:click': 'onCanvasClick',
       };
     }
     return {
       'node:click': 'onClick',
       'canvas:click': 'onCanvasClick',
       keyup: 'onKeyUp',
-      keydown: 'onKeyDown'
+      keydown: 'onKeyDown',
     };
   },
   onClick(e: IG6GraphEvent) {
-    const self = this;
-    const item = e.item;
-    const graph = self.graph;
+    const { item } = e;
+    const { graph, keydown, multiple, shouldUpdate } = this;
+
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
     // allow to select multiple nodes but did not press a key || do not allow the select multiple nodes
-    if (!self.keydown || !self.multiple) {
+    if (!keydown || !multiple) {
       const selected = graph.findAllByState('node', 'selected');
       each(selected, node => {
         if (node !== item) {
@@ -47,23 +50,31 @@ export default {
       });
     }
     if (item.hasState('selected')) {
-      if (self.shouldUpdate.call(self, e)) {
+      if (shouldUpdate.call(this, e)) {
         graph.setItemState(item, 'selected', false);
       }
       const selectedNodes = graph.findAllByState('node', 'selected');
-      graph.emit('nodeselectchange', { target: item, selectedItems: { nodes: selectedNodes }, select: false });
+      graph.emit('nodeselectchange', {
+        target: item,
+        selectedItems: { nodes: selectedNodes },
+        select: false,
+      });
     } else {
-      if (self.shouldUpdate.call(self, e)) {
+      if (shouldUpdate.call(this, e)) {
         graph.setItemState(item, 'selected', true);
       }
       const selectedNodes = graph.findAllByState('node', 'selected');
-      graph.emit('nodeselectchange', { target: item, selectedItems: { nodes: selectedNodes }, select: true });
+      graph.emit('nodeselectchange', {
+        target: item,
+        selectedItems: { nodes: selectedNodes },
+        select: true,
+      });
     }
     graph.setAutoPaint(autoPaint);
     graph.paint();
   },
   onCanvasClick() {
-    const graph = this.graph;
+    const { graph } = this;
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
     const selected = graph.findAllByState('node', 'selected');
@@ -76,18 +87,19 @@ export default {
     graph.setAutoPaint(autoPaint);
   },
   onKeyDown(e: IG6GraphEvent) {
+    const self = this as any;
     let code = e.key;
     if (!code) {
       return;
     }
     code = code.toLowerCase();
-    if (code === this.trigger) {
-      this.keydown = true;
+    if (code === self.trigger) {
+      self.keydown = true;
     } else {
-      this.keydown = false;
+      self.keydown = false;
     }
   },
   onKeyUp() {
-    this.keydown = false;
-  }
+    (this as any).keydown = false;
+  },
 };

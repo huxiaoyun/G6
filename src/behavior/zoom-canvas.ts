@@ -7,20 +7,20 @@ export default {
     return {
       sensitivity: 2,
       minZoom: 0.1,
-      maxZoom: 10
+      maxZoom: 10,
     };
   },
   getEvents(): { [key in G6Event]?: string } {
     return {
-      wheel: 'onWheel'
+      wheel: 'onWheel',
     };
   },
   onWheel(e: IG6GraphEvent) {
+    const { graph } = this;
     e.preventDefault();
     if (!this.shouldUpdate.call(this, e)) {
       return;
     }
-    const graph = this.graph;
     const canvas = graph.get('canvas');
     const point = canvas.getPointByClient(e.clientX, e.clientY);
     const sensitivity = this.get('sensitivity');
@@ -38,5 +38,5 @@ export default {
     graph.zoom(ratio, { x: point.x, y: point.y });
     graph.paint();
     graph.emit('wheelzoom', e);
-  }
+  },
 };

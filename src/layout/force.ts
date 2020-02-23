@@ -18,42 +18,42 @@ import { LAYOUT_MESSAGE } from './worker/layoutConst';
 /**
  * 经典力导布局 force-directed
  */
-export default class ForceLayout extends BaseLayout {
+export default class ForceLayout<Cfg = any> extends BaseLayout {
   /** 向心力作用点 */
-  public center: IPointTuple;
+  public center: IPointTuple = [0, 0];
   /** 节点作用力 */
-  public nodeStrength: any;
+  public nodeStrength: number | null = null;
   /** 边的作用力, 默认为根据节点的入度出度自适应 */
-  public edgeStrength: any;
+  public edgeStrength: number | null = null;
   /** 是否防止节点相互覆盖 */
-  public preventOverlap: boolean;
+  public preventOverlap: boolean = false;
   /** 节点大小 / 直径，用于防止重叠时的碰撞检测 */
-  public nodeSize: number | number[] | ((d?: unknown) => number);
+  public nodeSize: number | number[] | ((d?: unknown) => number) | undefined;
   /** 节点间距，防止节点重叠时节点之间的最小距离（两节点边缘最短距离） */
-  public nodeSpacing: number;
+  public nodeSpacing: ((d?: unknown) => number) | undefined;
   /** 默认边长度 */
-  public linkDistance: number;
+  public linkDistance: number = 50;
   /** 自定义 force 方法 */
   public forceSimulation: any;
   /** 迭代阈值的衰减率 [0, 1]，0.028 对应最大迭代数为 300 */
-  public alphaDecay: number;
+  public alphaDecay: number = 0.028;
   /** 停止迭代的阈值 */
-  public alphaMin: number;
+  public alphaMin: number = 0.001;
   /** 当前阈值 */
-  public alpha: number;
+  public alpha: number = 0.3;
   /** 防止重叠的力强度 */
-  public collideStrength: number;
+  public collideStrength: number = 1;
   /** 是否启用web worker。前提是在web worker里执行布局，否则无效	*/
-  public workerEnabled: boolean;
+  public workerEnabled: boolean = false;
 
-  public tick: () => void;
+  public tick: () => void = () => {};
 
-  public onLayoutEnd: () => void;
+  public onLayoutEnd: () => void = () => {};
   /** 布局完成回调 */
-  public onTick: () => void;
+  public onTick: () => void = () => {};
 
   /** 是否正在布局 */
-  private ticking: boolean;
+  private ticking: boolean | undefined = undefined;
 
   public getDefaultCfg() {
     return {
@@ -72,8 +72,8 @@ export default class ForceLayout extends BaseLayout {
       tick() {},
       onLayoutEnd() {}, // 布局完成回调
       onTick() {}, // 每一迭代布局回调
-      // 是否启用web worker。前提是在web worker里执行布局，否则无效	
-      workerEnabled: false
+      // 是否启用web worker。前提是在web worker里执行布局，否则无效
+      workerEnabled: false,
     };
   }
 
@@ -83,8 +83,8 @@ export default class ForceLayout extends BaseLayout {
    */
   public init(data: GraphData) {
     const self = this;
-    self.nodes = data.nodes;
-    self.edges = data.edges;
+    self.nodes = data.nodes || [];
+    self.edges = data.edges || [];
     self.ticking = false;
   }
 
@@ -124,16 +124,14 @@ export default class ForceLayout extends BaseLayout {
         // 如果有边，定义边的力
         if (edges) {
           // d3 的 forceLayout 会重新生成边的数据模型，为了避免污染源数据
-          const d3Edges = edges.map((edge) => {
-            return {
-              id: edge.id,
-              source: edge.source,
-              target: edge.target,
-            };
-          });
+          const d3Edges = edges.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+          }));
           const edgeForce = d3Force
             .forceLink()
-            .id((d) => d.id)
+            .id((d: any) => d.id)
             .links(d3Edges);
           if (self.edgeStrength) {
             edgeForce.strength(self.edgeStrength);
@@ -155,16 +153,22 @@ export default class ForceLayout extends BaseLayout {
             })
             .on('end', () => {
               self.ticking = false;
-              self.onLayoutEnd && self.onLayoutEnd();
+              if (self.onLayoutEnd) {
+                self.onLayoutEnd();
+              }
             });
           self.ticking = true;
-        } else { // worker is enabled
+        } else {
+          // worker is enabled
           simulation.stop();
           const totalTicks = getSimulationTicks(simulation);
           for (let currentTick = 1; currentTick <= totalTicks; currentTick++) {
             simulation.tick();
             // currentTick starts from 1.
-            postMessage({ type: LAYOUT_MESSAGE.TICK, currentTick, totalTicks, nodes }, undefined);
+            postMessage(
+              { type: LAYOUT_MESSAGE.TICK, currentTick, totalTicks, nodes },
+              undefined as any,
+            );
           }
           self.ticking = false;
         }
@@ -188,7 +192,7 @@ export default class ForceLayout extends BaseLayout {
    * 防止重叠
    * @param {object} simulation 力模拟模型
    */
-  public overlapProcess(simulation) {
+  public overlapProcess(simulation: any) {
     const self = this;
     const nodeSize = self.nodeSize;
     const nodeSpacing = self.nodeSpacing;
@@ -197,19 +201,15 @@ export default class ForceLayout extends BaseLayout {
     const collideStrength = self.collideStrength;
 
     if (isNumber(nodeSpacing)) {
-      nodeSpacingFunc = () => {
-        return nodeSpacing;
-      };
+      nodeSpacingFunc = () => nodeSpacing;
     } else if (isFunction(nodeSpacing)) {
       nodeSpacingFunc = nodeSpacing;
     } else {
-      nodeSpacingFunc = () => {
-        return 0;
-      };
+      nodeSpacingFunc = () => 0;
     }
 
     if (!nodeSize) {
-      nodeSizeFunc = (d) => {
+      nodeSizeFunc = d => {
         if (d.size) {
           if (isArray(d.size)) {
             const res = d.size[0] > d.size[1] ? d.size[0] : d.size[1];
@@ -227,32 +227,33 @@ export default class ForceLayout extends BaseLayout {
     } else if (isArray(nodeSize)) {
       const larger = nodeSize[0] > nodeSize[1] ? nodeSize[0] : nodeSize[1];
       const radius = larger / 2;
-      nodeSizeFunc = (d) => {
-        return radius + nodeSpacingFunc(d);
-      };
-    } else if (!isNaN(nodeSize)) {
+      nodeSizeFunc = d => radius + nodeSpacingFunc(d);
+    } else if (isNumber(nodeSize)) {
       const radius = nodeSize / 2;
-      nodeSizeFunc = (d) => {
-        return radius + nodeSpacingFunc(d);
-      };
+      nodeSizeFunc = d => radius + nodeSpacingFunc(d);
+    } else {
+      nodeSizeFunc = () => 10;
     }
 
     // forceCollide's parameter is a radius
-    simulation.force('collisionForce', d3Force.forceCollide(nodeSizeFunc).strength(collideStrength));
+    simulation.force(
+      'collisionForce',
+      d3Force.forceCollide(nodeSizeFunc).strength(collideStrength),
+    );
   }
 
   /**
    * 更新布局配置，但不执行布局
    * @param {object} cfg 需要更新的配置项
    */
-  public updateCfg(cfg) {
+  public updateCfg(cfg: Partial<Cfg>) {
     const self = this;
     if (self.ticking) {
       self.forceSimulation.stop();
       self.ticking = false;
     }
     self.forceSimulation = null;
-    mix(self, cfg);
+    mix(self as any, cfg);
   }
 
   public destroy() {
@@ -267,19 +268,21 @@ export default class ForceLayout extends BaseLayout {
   }
 }
 
-// Return total ticks of d3-force simulation	
-function getSimulationTicks(simulation): number {	
-  const alphaMin = simulation.alphaMin();	
-  const alphaTarget = simulation.alphaTarget();	
-  const alpha = simulation.alpha();	
-  const totalTicksFloat = Math.log((alphaMin - alphaTarget) / (alpha - alphaTarget)) / Math.log(1 - simulation.alphaDecay());	
-  const totalTicks = Math.ceil(totalTicksFloat);	
-  return totalTicks;	
+// Return total ticks of d3-force simulation
+function getSimulationTicks(simulation: any): number {
+  const alphaMin = simulation.alphaMin();
+  const alphaTarget = simulation.alphaTarget();
+  const alpha = simulation.alpha();
+  const totalTicksFloat =
+    Math.log((alphaMin - alphaTarget) / (alpha - alphaTarget)) /
+    Math.log(1 - simulation.alphaDecay());
+  const totalTicks = Math.ceil(totalTicksFloat);
+  return totalTicks;
 }
-declare const WorkerGlobalScope;
+declare const WorkerGlobalScope: any;
 
-// 判断是否运行在web worker里	
+// 判断是否运行在web worker里
 function isInWorker(): boolean {
-  // eslint-disable-next-line no-undef	
-  return typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;	
+  // eslint-disable-next-line no-undef
+  return typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
 }

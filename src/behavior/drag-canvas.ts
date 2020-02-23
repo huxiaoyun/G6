@@ -1,26 +1,28 @@
 import { G6Event, IG6GraphEvent } from '../types';
-import { cloneEvent } from '../util/base'
-const abs = Math.abs
-const DRAG_OFFSET = 10
-const ALLOW_EVENTS = [ 'shift', 'ctrl', 'alt', 'control' ];
+import { cloneEvent, isNaN } from '../util/base';
+
+const { abs } = Math;
+const DRAG_OFFSET = 10;
+const ALLOW_EVENTS = ['shift', 'ctrl', 'alt', 'control'];
 
 export default {
   getDefaultCfg(): object {
     return {
-      direction: 'both'
-    }
+      direction: 'both',
+    };
   },
   getEvents(): { [key in G6Event]?: string } {
     return {
-      'dragstart': 'onMouseDown',
-      'drag': 'onMouseMove',
-      'dragend': 'onMouseUp',
+      dragstart: 'onMouseDown',
+      drag: 'onMouseMove',
+      dragend: 'onMouseUp',
+      'canvas:click': 'onMouseUp',
       keyup: 'onKeyUp',
-      keydown: 'onKeyDown'
+      keydown: 'onKeyDown',
     };
   },
   updateViewport(e: IG6GraphEvent) {
-    const origin = this.origin;
+    const { origin } = this;
     const clientX = +e.clientX;
     const clientY = +e.clientY;
 
@@ -36,28 +38,30 @@ export default {
     }
     this.origin = {
       x: clientX,
-      y: clientY
+      y: clientY,
     };
     this.graph.translate(dx, dy);
     this.graph.paint();
   },
   onMouseDown(e: IG6GraphEvent) {
-    if (this.keydown || e.shape) {
+    const self = this as any;
+
+    if (self.keydown || e.shape) {
       return;
     }
 
-    this.origin = { x: e.clientX, y: e.clientY };
-    this.dragging = false;
+    self.origin = { x: e.clientX, y: e.clientY };
+    self.dragging = false;
   },
   onMouseMove(e: IG6GraphEvent) {
+    const { graph } = this;
     if (this.keydown || e.shape) {
       return;
     }
 
     e = cloneEvent(e);
-    const graph = this.graph;
-    if (!this.origin) { 
-      return; 
+    if (!this.origin) {
+      return;
     }
 
     if (!this.dragging) {
@@ -79,6 +83,7 @@ export default {
     }
   },
   onMouseUp(e: IG6GraphEvent) {
+    const { graph } = this;
     if (this.keydown || e.shape) {
       return;
     }
@@ -89,8 +94,7 @@ export default {
     }
 
     e = cloneEvent(e);
-    
-    const graph = this.graph;
+
     if (this.shouldEnd.call(this, e)) {
       this.updateViewport(e);
     }
@@ -99,23 +103,23 @@ export default {
     this.endDrag();
   },
   endDrag() {
-    const self = this;
-    self.origin = null;
-    self.dragging = false;
-    self.dragbegin = false;
+    this.origin = null;
+    this.dragging = false;
+    this.dragbegin = false;
   },
   onKeyDown(e: KeyboardEvent) {
+    const self = this as any;
     const code = e.key;
     if (!code) {
       return;
     }
     if (ALLOW_EVENTS.indexOf(code.toLowerCase()) > -1) {
-      this.keydown = true;
+      self.keydown = true;
     } else {
-      this.keydown = false;
+      self.keydown = false;
     }
   },
   onKeyUp() {
-    this.keydown = false;
-  }
-}
+    (this as any).keydown = false;
+  },
+};

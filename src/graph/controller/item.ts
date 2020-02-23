@@ -1,14 +1,14 @@
 import Group from '@antv/g-canvas/lib/group';
-import clone from '@antv/util/lib/clone'
-import deepMix from '@antv/util/lib/deep-mix'
-import each from '@antv/util/lib/each'
-import isArray from '@antv/util/lib/is-array'
-import isObject from '@antv/util/lib/is-object'
-import isString from '@antv/util/lib/is-string'
-import upperFirst from '@antv/util/lib/upper-first'
+import clone from '@antv/util/lib/clone';
+import deepMix from '@antv/util/lib/deep-mix';
+import each from '@antv/util/lib/each';
+import isArray from '@antv/util/lib/is-array';
+import isObject from '@antv/util/lib/is-object';
+import isString from '@antv/util/lib/is-string';
+import upperFirst from '@antv/util/lib/upper-first';
 import Edge from '../../item/edge';
 import Node from '../../item/node';
-import { EdgeConfig, Item, ITEM_TYPE, ModelConfig, NodeConfig, NodeMapConfig } from '../../types';
+import { EdgeConfig, Item, ITEM_TYPE, ModelConfig, NodeConfig, NodeMap } from '../../types';
 import Graph from '../graph';
 
 import { IEdge, INode } from '../../interface/item';
@@ -18,14 +18,18 @@ const EDGE = 'edge';
 const CFG_PREFIX = 'default';
 const MAPPER_SUFFIX = 'Mapper';
 const STATE_SUFFIX = 'stateStyles';
-const hasOwnProperty = Object.hasOwnProperty;
+const { hasOwnProperty } = Object;
+
+type Id = string | Item | undefined;
 
 export default class ItemController {
-  private graph: Graph
-  public destroyed: boolean
+  private graph: Graph;
+
+  public destroyed: boolean;
+
   constructor(graph: Graph) {
-    this.graph = graph
-    this.destroyed = false
+    this.graph = graph;
+    this.destroyed = false;
   }
 
   /**
@@ -36,12 +40,12 @@ export default class ItemController {
    * @returns {(Item)}
    * @memberof ItemController
    */
-  public addItem<T extends Item>(type: ITEM_TYPE, model: ModelConfig): T {
-    const graph = this.graph;
-    const parent: Group = graph.get(type + 'Group') || graph.get('group');
+  public addItem<T extends Item>(type: ITEM_TYPE, model: ModelConfig) {
+    const { graph } = this;
+    const parent: Group = graph.get(`${type}Group`) || graph.get('group');
     const upperType = upperFirst(type);
 
-    let item;
+    let item: Item | null = null;
     let styles = graph.get(type + upperFirst(STATE_SUFFIX)) || {};
     const defaultModel = graph.get(CFG_PREFIX + upperType);
 
@@ -72,15 +76,17 @@ export default class ItemController {
       });
     }
 
-    if(model.shape) {
-      console.warn('shape 字段即将被废弃，请使用 type 代替')
+    if (model.shape) {
+      console.warn('shape 字段即将被废弃，请使用 type 代替');
     }
 
     graph.emit('beforeadditem', { type, model });
 
-    if(type === EDGE) {
-      let source: string | Item = (model as EdgeConfig).source
-      let target: string | Item = (model as EdgeConfig).target
+    if (type === EDGE) {
+      let source: Id;
+      let target: Id;
+      source = (model as EdgeConfig).source; // eslint-disable-line prefer-destructuring
+      target = (model as EdgeConfig).target; // eslint-disable-line prefer-destructuring
 
       if (source && isString(source)) {
         source = graph.findById(source);
@@ -90,7 +96,7 @@ export default class ItemController {
       }
 
       if (!source || !target) {
-        console.warn('The source or target node of edge ' + model.id + ' does not exist!')
+        console.warn(`The source or target node of edge ${model.id} does not exist!`);
         return;
       }
 
@@ -100,21 +106,24 @@ export default class ItemController {
         target,
         styles,
         linkCenter: graph.get('linkCenter'),
-        group: parent.addGroup()
-      })
-    } else if(type === NODE) {
+        group: parent.addGroup(),
+      });
+    } else if (type === NODE) {
       item = new Node({
         model,
         styles,
-        group: parent.addGroup()
-      })
+        group: parent.addGroup(),
+      });
     }
 
-    graph.get(type + 's').push(item);
-    graph.get('itemMap')[item.get('id')] = item;
-    graph.autoPaint();
-    graph.emit('afteradditem', { item, model });
-    return item;
+    if (item) {
+      graph.get(`${type}s`).push(item);
+      graph.get('itemMap')[item.get('id')] = item;
+      graph.autoPaint();
+      graph.emit('afteradditem', { item, model });
+      // eslint-disable-next-line consistent-return
+      return item as T;
+    }
   }
 
   /**
@@ -126,8 +135,8 @@ export default class ItemController {
    * @memberof ItemController
    */
   public updateItem(item: Item | string, cfg: EdgeConfig | NodeConfig) {
-    const graph = this.graph;
-    
+    const { graph } = this;
+
     if (isString(item)) {
       item = graph.findById(item) as Item;
     }
@@ -137,17 +146,17 @@ export default class ItemController {
     }
 
     // 更新的 item 的类型
-    const type = item.getType()
+    const type = item.getType();
 
-    const mapper = graph.get(type + MAPPER_SUFFIX)
-    const model = item.getModel()
+    const mapper = graph.get(type + MAPPER_SUFFIX);
+    const model = item.getModel();
 
-    if(mapper) {
+    if (mapper) {
       const result: ModelConfig = deepMix({}, model, cfg);
       const mappedModel: ModelConfig = mapper(result);
       // 将 update 时候用户传入的参数与mapperModel做deepMix，以便复用之前设置的参数值
       const newModel: ModelConfig = deepMix({}, model, mappedModel, cfg);
-      
+
       if (mappedModel[STATE_SUFFIX]) {
         item.set('styles', newModel[STATE_SUFFIX]);
         delete newModel[STATE_SUFFIX];
@@ -170,7 +179,7 @@ export default class ItemController {
     // emit beforeupdateitem 事件
     graph.emit('beforeupdateitem', { item, cfg });
 
-    if(type === EDGE) {
+    if (type === EDGE) {
       // 若是边要更新source || target, 为了不影响示例内部model，并且重新计算startPoint和endPoint，手动设置
       if (cfg.source) {
         let source: INode = cfg.source as INode;
@@ -188,12 +197,12 @@ export default class ItemController {
       }
     }
 
-    item.update(cfg)
-    
-    if(type === NODE) {
+    item.update(cfg);
+
+    if (type === NODE) {
       const autoPaint = graph.get('autoPaint');
       graph.setAutoPaint(false);
-      const edges: IEdge[] = (item as INode).getEdges()
+      const edges: IEdge[] = (item as INode).getEdges();
       each(edges, (edge: IEdge) => {
         graph.refreshItem(edge);
       });
@@ -213,7 +222,7 @@ export default class ItemController {
    * @memberof ItemController
    */
   public removeItem(item: Item | string): void {
-    const graph = this.graph;
+    const { graph } = this;
     if (isString(item)) {
       item = graph.findById(item);
     }
@@ -225,12 +234,12 @@ export default class ItemController {
     graph.emit('beforeremoveitem', { item });
 
     const type = item.getType();
-    const items = graph.get(item.getType() + 's');
+    const items = graph.get(`${item.getType()}s`);
     const index = items.indexOf(item);
     items.splice(index, 1);
 
-    const itemId: string = item.get('id')
-    const itemMap: NodeMapConfig = graph.get('itemMap')
+    const itemId: string = item.get('id');
+    const itemMap: NodeMap = graph.get('itemMap');
     delete itemMap[itemId];
 
     if (type === NODE) {
@@ -256,7 +265,7 @@ export default class ItemController {
    * @memberof ItemController
    */
   public setItemState(item: Item, state: string, enabled: boolean): void {
-    const graph = this.graph;
+    const { graph } = this;
     if (item.hasState(state) === enabled) {
       return;
     }
@@ -276,8 +285,8 @@ export default class ItemController {
    * @param {string[]} states 状态名称集合
    * @memberof ItemController
    */
-  public clearItemStates(item: Item | string, states: string | string[]): void {
-    const graph = this.graph;
+  public clearItemStates(item: Item | string, states?: string | string[]): void {
+    const { graph } = this;
 
     if (isString(item)) {
       item = graph.findById(item);
@@ -298,7 +307,7 @@ export default class ItemController {
    * @memberof ItemController
    */
   public refreshItem(item: Item | string): void {
-    const graph = this.graph;
+    const { graph } = this;
 
     if (isString(item)) {
       item = graph.findById(item);
@@ -321,8 +330,7 @@ export default class ItemController {
    * @memberof ItemController
    */
   public changeItemVisibility(item: Item | string, visible: boolean): void {
-    const self = this;
-    const graph = self.graph;
+    const { graph } = this;
 
     if (isString(item)) {
       item = graph.findById(item);
@@ -335,15 +343,15 @@ export default class ItemController {
     if (item.getType() === NODE) {
       const autoPaint = graph.get('autoPaint');
       graph.setAutoPaint(false);
-      const edges = (item as INode).getEdges()
+      const edges = (item as INode).getEdges();
       each(edges, (edge: IEdge) => {
         // 若隐藏节点，则将与之关联的边也隐藏
         // 若显示节点，则将与之关联的边也显示，但是需要判断边两端的节点都是可见的
-        if (visible && (!(edge.get('source').isVisible() && edge.get('target').isVisible()))) {
+        if (visible && !(edge.get('source').isVisible() && edge.get('target').isVisible())) {
           return;
         }
 
-        self.changeItemVisibility(edge, visible);
+        this.changeItemVisibility(edge, visible);
       });
 
       graph.setAutoPaint(autoPaint);
@@ -354,7 +362,7 @@ export default class ItemController {
   }
 
   public destroy() {
-    this.graph = null;
+    (this.graph as Graph | null) = null;
     this.destroyed = true;
   }
 }

@@ -5,6 +5,7 @@ import ShapeBase from '@antv/g-canvas/lib/shape/base';
 import Node from '../item/node';
 import { IGraph } from '../interface/graph';
 import { IEdge, INode } from '../interface/item';
+import { ILabelConfig } from '../interface/shape';
 
 // Math types
 export interface IPoint {
@@ -87,7 +88,7 @@ export type LoopConfig = Partial<{
   position: string;
   // 如果逆时针画，交换起点和终点
   clockwise: boolean;
-}>
+}>;
 
 // model types (node edge group)
 export type ModelStyle = Partial<{
@@ -96,7 +97,71 @@ export type ModelStyle = Partial<{
   stateStyles: {
     [key: string]: ShapeStyle;
   };
-  linkPoints: {
+  // loop edge config
+  loopCfg: LoopConfig;
+  labelCfg?: ILabelConfig;
+}>;
+
+export type LabelStyle = Partial<{
+  rotate: number;
+  textAlign: string;
+  angle: number;
+  x: number;
+  y: number;
+  text: string;
+  stroke: string | null;
+  opacity: number;
+  fontSize: number;
+  fontStyle: string;
+  fill: string | null;
+  rotateCenter: string;
+  lineWidth?: number;
+}>;
+
+export type Easeing =
+  | 'easeLinear'
+  | 'easePolyIn'
+  | 'easePolyOut'
+  | 'easePolyInOut'
+  | 'easeQuad'
+  | 'easeQuadIn'
+  | 'easeQuadOut'
+  | 'easeQuadInOut'
+  | string;
+
+export interface ModelConfig extends ModelStyle {
+  // ⚠️ 节点或边的类型，后续会废弃
+  shape?: string;
+  // 节点或边的类型
+  type?: string;
+  label?: string;
+  labelCfg?: ILabelConfig;
+  descriptionCfg?: {
+    style?: object;
+    [key: string]: unknown;
+  };
+  groupId?: string;
+  description?: string;
+  x?: number;
+  y?: number;
+  size?: number | number[];
+  img?: string;
+  color?: string;
+  preRect?: {
+    show?: boolean;
+    [key: string]: unknown;
+  };
+  logoIcon?: {
+    show?: boolean;
+    [key: string]: unknown;
+  };
+  stateIcon?: {
+    show?: boolean;
+    [key: string]: unknown;
+  };
+  anchorPoints?: number[][];
+  controlPoints?: IPoint[];
+  linkPoints?: {
     top?: boolean;
     right?: boolean;
     bottom?: boolean;
@@ -105,9 +170,10 @@ export type ModelStyle = Partial<{
     lineWidth?: number;
     fill?: string;
     stroke?: string;
+    r?: number;
     [key: string]: unknown;
   };
-  icon: {
+  icon?: {
     show?: boolean;
     // icon的地址，字符串类型
     img?: string;
@@ -115,15 +181,7 @@ export type ModelStyle = Partial<{
     height?: number;
     offset?: number;
   };
-  // loop edge config
-  loopCfg: LoopConfig;
-  labelCfg?: object;
-  anchorPoints: number[][];
-  controlPoints: IPoint[];
-  size: number | number[];
-  img: string;
-
-  clipCfg: {
+  clipCfg?: {
     show?: boolean;
     type?: string;
     // circle
@@ -146,67 +204,16 @@ export type ModelStyle = Partial<{
       lineWidth?: number;
     };
   };
-}>;
-
-export type LabelStyle = Partial<{
-  rotate: number;
-  textAlign: string;
-  angle: number;
-  x: number;
-  y: number;
-  text: string;
-  stroke: string | null;
-  opacity: number;
-  fontSize: number;
-  fill: string | null;
-}>;
-
-export type Easeing =
-  | 'easeLinear'
-  | 'easePolyIn'
-  | 'easePolyOut'
-  | 'easePolyInOut'
-  | 'easeQuad'
-  | 'easeQuadIn'
-  | 'easeQuadOut'
-  | 'easeQuadInOut'
-  | string;
-
-export interface ModelConfig extends ModelStyle {
-  // ⚠️ 节点或边的类型，后续会废弃
-  shape?: string;
-  // 节点或边的类型
-  type?: string;
-  label?: string;
-  labelCfg?: {
-    style?: object;
-    [key: string]: unknown;
-  };
-  descriptionCfg?: {
-    style?: object;
-    [key: string]: unknown;
-  };
-  groupId?: string;
-  description?: string;
-  x?: number;
-  y?: number;
-  size?: number | number[];
-  controlPoints?: IPoint[];
-  color?: string;
-  preRect?: object;
-  logoIcon?: {
-    show?: boolean;
-    [key: string]: unknown;
-  };
-  stateIcon?: object;
   innerR?: number;
   direction?: string;
   startPoint?: IPoint;
   endPoint?: IPoint;
   children?: TreeGraphData[];
 }
+
 export interface NodeConfig extends ModelConfig {
   id: string;
+  size?: number | number[];
   groupId?: string;
   description?: string;
 }
@@ -216,10 +223,7 @@ export interface EdgeConfig extends ModelConfig {
   source?: string;
   target?: string;
   label?: string;
-  labelCfg?: {
-    style?: object;
-    [key: string]: unknown;
-  };
+  labelCfg?: ILabelConfig;
   sourceNode?: Node;
   targetNode?: Node;
   startPoint?: IPoint;
@@ -236,7 +240,11 @@ export type EdgeData = EdgeConfig & {
   endPoint: IPoint;
 };
 
-export interface NodeMapConfig {
+export interface NodeMap {
+  [key: string]: INode;
+}
+
+export interface NodeConfigMap {
   [key: string]: NodeConfig;
 }
 
@@ -328,7 +336,7 @@ type Unbind = 'unbind';
 
 export type DefaultBehaviorType = IG6GraphEvent | string | number | object;
 
-export type BehaviorOpation<U> = {
+export type BehaviorOption<U> = {
   [T in keyof U]: T extends GetEvents
     ? () => { [key in G6Event]?: string }
     : T extends ShouldBegin
@@ -347,7 +355,7 @@ export type BehaviorOpation<U> = {
 export type IEvent = Record<G6Event, string>;
 
 export interface IG6GraphEvent extends GraphEvent {
-  item: Item;
+  item: Item | null;
   canvasX: number;
   canvasY: number;
   wheelDelta: number;
@@ -359,10 +367,23 @@ export interface IG6GraphEvent extends GraphEvent {
 // Node Edge 实例或ID
 export type Item = INode | IEdge;
 
-export type ITEM_TYPE = 'node' | 'edge' | 'group'
+export type ITEM_TYPE = 'node' | 'edge' | 'group';
+
+export type NodeIdxMap = {
+  [key: string]: number;
+};
 
 // 触发 viewportchange 事件的参数
 export interface ViewPortEventParam {
   action: string;
   matrix: Matrix;
+}
+
+export interface Indexable<T> {
+  [key: string]: T;
+}
+
+export interface LayoutConfig {
+  type?: string;
+  [key: string]: unknown;
 }

@@ -3,28 +3,30 @@ import { G6Event, IG6GraphEvent } from '../types';
 export default {
   getDefaultCfg(): object {
     return {
-      trigger: 'mouseenter',         // 可选 mouseenter || click
+      trigger: 'mouseenter', // 可选 mouseenter || click
       activeState: 'active',
       inactiveState: 'inactive',
       resetSelected: false,
-      shouldUpdate() { return true; }
+      shouldUpdate() {
+        return true;
+      },
     };
   },
   getEvents(): { [key in G6Event]?: string } {
-    if (this.get('trigger') === 'mouseenter') {
+    if ((this as any).get('trigger') === 'mouseenter') {
       return {
         'node:mouseenter': 'setAllItemStates',
-        'node:mouseleave': 'clearAllItemStates'
+        'node:mouseleave': 'clearAllItemStates',
       };
     }
     return {
       'node:click': 'setAllItemStates',
-      'canvas:click': 'clearAllItemStates'
+      'canvas:click': 'clearAllItemStates',
     };
   },
   setAllItemStates(e: IG6GraphEvent) {
+    const { item } = e;
     const graph = this.get('graph');
-    const item = e.item;
     this.set('item', item);
     if (!this.shouldUpdate(e.item, { event: e, action: 'activate' })) {
       return;
@@ -34,7 +36,7 @@ export default {
     const inactiveState = this.get('inactiveState');
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
-    graph.getNodes().forEach(function(node) {
+    graph.getNodes().forEach(node => {
       const hasSelected = node.hasState('selected');
       if (self.resetSelected) {
         if (hasSelected) {
@@ -46,7 +48,7 @@ export default {
         graph.setItemState(node, inactiveState, true);
       }
     });
-    graph.getEdges().forEach(function(edge) {
+    graph.getEdges().forEach(edge => {
       graph.setItemState(edge, activeState, false);
       if (inactiveState) {
         graph.setItemState(edge, inactiveState, true);
@@ -56,7 +58,7 @@ export default {
       graph.setItemState(item, inactiveState, false);
     }
     graph.setItemState(item, activeState, true);
-    graph.getEdges().forEach(function(edge) {
+    graph.getEdges().forEach(edge => {
       if (edge.getSource() === item) {
         const target = edge.getTarget();
         if (inactiveState) {
@@ -81,26 +83,30 @@ export default {
     graph.setAutoPaint(autoPaint);
     graph.emit('afteractivaterelations', { item: e.item, action: 'activate' });
   },
-  clearAllItemStates(e) {
-    const graph = this.get('graph');
-    if (!this.shouldUpdate(e.item, { event: e, action: 'deactivate' })) {
+  clearAllItemStates(e: any) {
+    const self = this;
+    const graph = self.get('graph');
+    if (!self.shouldUpdate(e.item, { event: e, action: 'deactivate' })) {
       return;
     }
-    const self = this;
+
     const autoPaint = graph.get('autoPaint');
     graph.setAutoPaint(false);
-    graph.getNodes().forEach(function(node) {
+    graph.getNodes().forEach(node => {
       const hasSelected = node.hasState('selected');
       graph.clearItemStates(node);
       if (hasSelected) {
         graph.setItemState(node, 'selected', !self.resetSelected);
       }
     });
-    graph.getEdges().forEach(function(edge) {
+    graph.getEdges().forEach(edge => {
       graph.clearItemStates(edge);
     });
     graph.paint();
     graph.setAutoPaint(autoPaint);
-    graph.emit('afteractivaterelations', { item: e.item || this.get('item'), action: 'deactivate' });
-  }
+    graph.emit('afteractivaterelations', {
+      item: e.item || self.get('item'),
+      action: 'deactivate',
+    });
+  },
 };

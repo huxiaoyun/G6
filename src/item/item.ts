@@ -1,28 +1,29 @@
 import Group from '@antv/g-canvas/lib/group';
-import each from '@antv/util/lib/each'
+import each from '@antv/util/lib/each';
 import isNil from '@antv/util/lib/is-nil';
-import isPlainObject from '@antv/util/lib/is-plain-object'
-import isString from '@antv/util/lib/is-string'
-import uniqueId from '@antv/util/lib/unique-id'
-import { IItemBase, IItemBaseConfig } from "../interface/item";
+import isPlainObject from '@antv/util/lib/is-plain-object';
+import isString from '@antv/util/lib/is-string';
+import uniqueId from '@antv/util/lib/unique-id';
+import { IItemBase, IItemBaseConfig } from '../interface/item';
 import Shape from '../shape/shape';
-import { IBBox, IPoint, IShapeBase, ModelConfig, ShapeStyle } from '../types';
+import { IBBox, IPoint, IShapeBase, ModelConfig, ShapeStyle, Indexable } from '../types';
 import { getBBox } from '../util/graphic';
 import { translate } from '../util/math';
 
 const CACHE_BBOX = 'bboxCache';
 
-const RESERVED_STYLES = [ 'fillStyle', 'strokeStyle', 
-  'path', 'points', 'img', 'symbol' ];
-  
+const RESERVED_STYLES = ['fillStyle', 'strokeStyle', 'path', 'points', 'img', 'symbol'];
+
 export default class ItemBase implements IItemBase {
-  public _cfg: IItemBaseConfig = {}
+  public _cfg: IItemBaseConfig & {
+    [key: string]: unknown;
+  } = {};
   private defaultCfg: IItemBaseConfig = {
     /**
      * id
      * @type {string}
      */
-    id: null,
+    id: undefined,
 
     /**
      * 类型
@@ -40,7 +41,7 @@ export default class ItemBase implements IItemBase {
      * g group
      * @type {G.Group}
      */
-    group: null,
+    group: undefined,
 
     /**
      * is open animate
@@ -68,35 +69,35 @@ export default class ItemBase implements IItemBase {
      * key shape to calculate item's bbox
      * @type object
      */
-    keyShape: null,
+    keyShape: undefined,
     /**
      * item's states, such as selected or active
      * @type Array
      */
-    states: []
+    states: [],
   };
 
-  public destroyed: boolean = false
+  public destroyed: boolean = false;
 
   constructor(cfg: IItemBaseConfig) {
-    this._cfg = Object.assign(this.defaultCfg, this.getDefaultCfg(), cfg)
-    const group = cfg.group
-    group.set('item', this)
+    this._cfg = Object.assign(this.defaultCfg, this.getDefaultCfg(), cfg);
+    const { group } = cfg;
+    if (group) group.set('item', this);
 
-    let id = this.get('model').id
+    let { id } = this.get('model');
 
-    if(!id) {
-      id = uniqueId(this.get('type'))
+    if (!id) {
+      id = uniqueId(this.get('type'));
     }
 
-    this.set('id', id)
-    group.set('id', id)
+    this.set('id', id);
+    if (group) group.set('id', id);
 
-    const stateStyles = this.get('model').stateStyles;
+    const { stateStyles } = this.get('model');
     this.set('stateStyles', stateStyles);
 
-    this.init()
-    this.draw()
+    this.init();
+    this.draw();
   }
 
   /**
@@ -131,7 +132,7 @@ export default class ItemBase implements IItemBase {
     }
     self.updatePosition(model);
     const cfg = self.getShapeCfg(model); // 可能会附加额外信息
-    const shapeType: string = cfg.shape || cfg.type;
+    const shapeType = (cfg.shape as string) || (cfg.type as string);
 
     const keyShape: IShapeBase = shapeFactory.draw(shapeType, cfg, group);
     if (keyShape) {
@@ -141,15 +142,15 @@ export default class ItemBase implements IItemBase {
     }
     // 防止由于用户外部修改 model 中的 shape 导致 shape 不更新
     this.set('currentShape', shapeType);
-    this.resetStates(shapeFactory, shapeType);
+    this.resetStates(shapeFactory, shapeType!);
   }
 
   /**
    * reset shape states
-   * @param shapeFactory 
-   * @param shapeType 
+   * @param shapeFactory
+   * @param shapeType
    */
-  private resetStates(shapeFactory, shapeType: string) {
+  private resetStates(shapeFactory: any, shapeType: string) {
     const self = this;
     const states: string[] = self.get('states');
     each(states, state => {
@@ -168,8 +169,8 @@ export default class ItemBase implements IItemBase {
    * @param  {String} key 属性名
    * @return {object | string | number} 属性值
    */
-  public get(key: string) {
-    return this._cfg[key]
+  public get<T = any>(key: string): T {
+    return this._cfg[key] as T;
   }
 
   /**
@@ -178,18 +179,17 @@ export default class ItemBase implements IItemBase {
    * @param {String|Object} key 属性名，也可以是对象
    * @param {object | string | number} val 属性值
    */
-  public set(key: string, val): void {
-    if(isPlainObject(key)) {
-      this._cfg = Object.assign({}, this._cfg, key)
+  public set(key: string | object, val?: unknown): void {
+    if (isPlainObject(key)) {
+      this._cfg = Object.assign({}, this._cfg, key);
     } else {
-      this._cfg[key] = val
+      this._cfg[key] = val;
     }
   }
 
   protected getDefaultCfg() {
-    return {}
+    return {};
   }
-
 
   /**
    * 更新/刷新等操作后，清除 cache
@@ -201,37 +201,31 @@ export default class ItemBase implements IItemBase {
   /**
    * 渲染前的逻辑，提供给子类复写
    */
-  protected beforeDraw() {
-
-  }
+  protected beforeDraw() {}
 
   /**
    * 渲染后的逻辑，提供给子类复写
    */
-  protected afterDraw() {
-
-  }
+  protected afterDraw() {}
 
   /**
    * 更新后做一些工作
    */
-  protected afterUpdate() {
-
-  }
+  protected afterUpdate() {}
 
   /**
    * draw shape
    */
   public draw() {
-    this.beforeDraw()
-    this.drawInner()
-    this.afterDraw()
+    this.beforeDraw();
+    this.drawInner();
+    this.afterDraw();
   }
 
-  public getKeyShapeStyle(): ShapeStyle {
+  public getKeyShapeStyle(): ShapeStyle | void {
     const keyShape = this.getKeyShape();
     if (keyShape) {
-      const styles: ShapeStyle = {};
+      const styles: ShapeStyle & Indexable<any> = {};
       each(keyShape.attr(), (val, key) => {
         if (RESERVED_STYLES.indexOf(key) < 0) {
           styles[key] = val;
@@ -239,6 +233,7 @@ export default class ItemBase implements IItemBase {
       });
       return styles;
     }
+    return {};
   }
 
   public getShapeCfg(model: ModelConfig): ModelConfig {
@@ -299,25 +294,25 @@ export default class ItemBase implements IItemBase {
 
     if (shapeFactory) {
       const model: ModelConfig = this.get('model');
-      const type = model.shape || model.type
+      const type = model.shape || model.type;
       shapeFactory.setState(type, state, enable, this);
     }
   }
 
-  // TODO 
+  // TODO
   public clearStates(states: string[]) {
     const self = this;
     const originStates = self.getStates();
     const shapeFactory = self.get('shapeFactory');
-    const model: ModelConfig = self.get('model')
-    const shape: string = model.shape || model.type;
+    const model: ModelConfig = self.get('model');
+    const shape = model.shape || model.type;
     if (!states) {
       self.set('states', []);
       shapeFactory.setState(shape, originStates[0], false, self);
       return;
     }
     if (isString(states)) {
-      states = [ states ];
+      states = [states];
     }
     const newStates = originStates.filter(state => {
       shapeFactory.setState(shape, state, false, self);
@@ -365,9 +360,9 @@ export default class ItemBase implements IItemBase {
    * 是否是 Item 对象，悬空边情况下进行判定
    */
   public isItem(): boolean {
-    return true
+    return true;
   }
-  
+
   /**
    * 获取当前元素的所有状态
    * @return {Array} 元素的所有状态
@@ -382,7 +377,7 @@ export default class ItemBase implements IItemBase {
    * @return {Boolean} 是否处于某状态
    */
   public hasState(state: string): boolean {
-    const states = this.getStates()
+    const states = this.getStates();
     return states.indexOf(state) >= 0;
   }
 
@@ -406,7 +401,7 @@ export default class ItemBase implements IItemBase {
   }
 
   public isOnlyMove(cfg?: ModelConfig): boolean {
-    return false
+    return false;
   }
 
   /**
@@ -416,11 +411,11 @@ export default class ItemBase implements IItemBase {
    */
   public update(cfg: ModelConfig) {
     const model: ModelConfig = this.get('model');
-    const originPosition: IPoint = { x: model.x, y: model.y };
+    const originPosition: IPoint = { x: model.x!, y: model.y! };
 
     // 直接将更新合到原数据模型上，可以保证用户在外部修改源数据然后刷新时的样式符合期待。
     Object.assign(model, cfg);
-    
+
     // isOnlyMove 仅用于node
     const onlyMove = this.isOnlyMove(cfg);
     // 仅仅移动位置时，既不更新，也不重绘
@@ -477,10 +472,10 @@ export default class ItemBase implements IItemBase {
     }
     group.resetMatrix();
     // G 4.0 element 中移除了矩阵相关方法，详见https://www.yuque.com/antv/blog/kxzk9g#4rMMV
-    translate(group, { x, y });
+    translate(group, { x: x!, y: y! });
     model.x = x;
     model.y = y;
-    this.clearCache();     // 位置更新后需要清除缓存
+    this.clearCache(); // 位置更新后需要清除缓存
   }
 
   /**
@@ -553,22 +548,21 @@ export default class ItemBase implements IItemBase {
    */
   public enableCapture(enable: boolean) {
     const group: Group = this.get('group');
-    if(group) {
-      group.set('capture', enable)
+    if (group) {
+      group.set('capture', enable);
     }
   }
 
   public destroy() {
-    if(!this.destroyed) {
+    if (!this.destroyed) {
       const animate = this.get('animate');
       const group: Group = this.get('group');
       if (animate) {
         group.stopAnimate();
       }
       group.remove();
-      this._cfg = null;
+      (this._cfg as IItemBaseConfig | null) = null;
       this.destroyed = true;
     }
   }
-
 }

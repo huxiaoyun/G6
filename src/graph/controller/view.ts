@@ -1,37 +1,40 @@
 import Canvas from '@antv/g-base/lib/abstract/canvas';
 import { Point } from '@antv/g-base/lib/types';
 import Group from '@antv/g-canvas/lib/group';
-import isNumber from "@antv/util/lib/is-number";
-import isString from '@antv/util/lib/is-string'
-import { IGraph } from "../../interface/graph";
+import isNumber from '@antv/util/lib/is-number';
+import isString from '@antv/util/lib/is-string';
 import { Item, Matrix, Padding } from '../../types';
-import { formatPadding } from '../../util/base'
+import { formatPadding } from '../../util/base';
 import { applyMatrix, invertMatrix } from '../../util/math';
+import Graph from '../graph';
+import { mat3 } from '@antv/matrix-util';
 
 export default class ViewController {
-  private graph: IGraph = null
-  public destroyed: boolean = false
-  constructor(graph: IGraph) {
-    this.graph = graph
-    this.destroyed = false
+  private graph: Graph;
+
+  public destroyed: boolean = false;
+
+  constructor(graph: Graph) {
+    this.graph = graph;
+    this.destroyed = false;
   }
 
   // get view center coordinate
   private getViewCenter(): Point {
     const padding = this.getFormatPadding();
-    const graph = this.graph;
+    const { graph } = this;
     const width: number = this.graph.get('width');
     const height: number = graph.get('height');
     return {
       x: (width - padding[2] - padding[3]) / 2 + padding[3],
-      y: (height - padding[0] - padding[2]) / 2 + padding[0]
+      y: (height - padding[0] - padding[2]) / 2 + padding[0],
     };
   }
 
   // fit view graph
   public fitView() {
+    const { graph } = this;
     const padding = this.getFormatPadding();
-    const graph = this.graph;
     const group: Group = graph.get('group');
     const width: number = graph.get('width');
     const height: number = graph.get('height');
@@ -40,7 +43,7 @@ export default class ViewController {
     const viewCenter = this.getViewCenter();
     const groupCenter: Point = {
       x: bbox.x + bbox.width / 2,
-      y: bbox.y + bbox.height / 2
+      y: bbox.y + bbox.height / 2,
     };
     graph.translate(viewCenter.x - groupCenter.x, viewCenter.y - groupCenter.y);
     const w = (width - padding[1] - padding[3]) / bbox.width;
@@ -53,15 +56,19 @@ export default class ViewController {
   }
 
   public getFormatPadding(): number[] {
-    const padding = this.graph.get<Padding>('fitViewPadding')
-    return formatPadding(padding)
+    const padding = this.graph.get('fitViewPadding') as Padding;
+    return formatPadding(padding);
   }
 
   public focusPoint(point: Point) {
     const viewCenter = this.getViewCenter();
     const modelCenter = this.getPointByCanvas(viewCenter.x, viewCenter.y);
-    const viewportMatrix: Matrix = this.graph.get('group').getMatrix();
-    this.graph.translate((modelCenter.x - point.x) * viewportMatrix[0], (modelCenter.y - point.y) * viewportMatrix[4]);
+    let viewportMatrix: Matrix = this.graph.get('group').getMatrix();
+    if (!viewportMatrix) viewportMatrix = mat3.create();
+    this.graph.translate(
+      (modelCenter.x - point.x) * viewportMatrix[0],
+      (modelCenter.y - point.y) * viewportMatrix[4],
+    );
   }
 
   /**
@@ -70,7 +77,10 @@ export default class ViewController {
    * @param canvasY canvas y 坐标
    */
   public getPointByCanvas(canvasX: number, canvasY: number): Point {
-    const viewportMatrix: Matrix = this.graph.get('group').getMatrix();
+    let viewportMatrix: Matrix = this.graph.get('group').getMatrix();
+    if (!viewportMatrix) {
+      viewportMatrix = mat3.create();
+    }
     const point = invertMatrix({ x: canvasX, y: canvasY }, viewportMatrix);
     return point;
   }
@@ -91,7 +101,7 @@ export default class ViewController {
    * @param x 视口 x 坐标
    * @param y 视口 y 坐标
    */
-  public getClientByPoint(x, y): Point {
+  public getClientByPoint(x: number, y: number): Point {
     const canvas: Canvas = this.graph.get('canvas');
     const canvasPoint = this.getCanvasByPoint(x, y);
     const point = canvas.getClientByPoint(canvasPoint.x, canvasPoint.y);
@@ -104,8 +114,11 @@ export default class ViewController {
    * @param x 视口 x 坐标
    * @param y 视口 y 坐标
    */
-  public getCanvasByPoint(x, y): Point {
-    const viewportMatrix: Matrix = this.graph.get('group').getMatrix();
+  public getCanvasByPoint(x: number, y: number): Point {
+    let viewportMatrix: Matrix = this.graph.get('group').getMatrix();
+    if (!viewportMatrix) {
+      viewportMatrix = mat3.create();
+    }
     return applyMatrix({ x, y }, viewportMatrix);
   }
 
@@ -114,18 +127,19 @@ export default class ViewController {
    * @param item Item 实例或 id
    */
   public focus(item: string | Item) {
-    if(isString(item)) {
-      item = this.graph.findById(item)
+    if (isString(item)) {
+      item = this.graph.findById(item);
     }
 
-    if(item) {
-      const group: Group = item.get('group')
-      const matrix: Matrix = group.getMatrix()
+    if (item) {
+      const group: Group = item.get('group');
+      let matrix: Matrix = group.getMatrix();
+      if (!matrix) matrix = mat3.create();
       // 用实际位置而不是model中的x,y,防止由于拖拽等的交互导致model的x,y并不是当前的x,y
       this.focusPoint({
         x: matrix[6],
-        y: matrix[7]
-      })
+        y: matrix[7],
+      });
     }
   }
 
@@ -135,18 +149,18 @@ export default class ViewController {
    * @param height canvas 高度
    */
   public changeSize(width: number, height: number) {
-    if(!isNumber(width) || !isNumber(height)) {
-      throw Error('invalid canvas width & height, pleace make sure width & height type is number');
+    const { graph } = this;
+    if (!isNumber(width) || !isNumber(height)) {
+      throw Error('invalid canvas width & height, please make sure width & height type is number');
     }
 
-    const graph = this.graph
-    graph.set({ width, height })
-    const canvas: Canvas = graph.get('canvas')
-    canvas.changeSize(width, height)
+    graph.set({ width, height });
+    const canvas: Canvas = graph.get('canvas');
+    canvas.changeSize(width, height);
   }
 
   public destroy() {
-    this.graph = null
-    this.destroyed = false
+    (this.graph as Graph | null) = null;
+    this.destroyed = false;
   }
 }

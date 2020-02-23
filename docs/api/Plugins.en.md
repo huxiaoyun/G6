@@ -4,44 +4,36 @@ order: 9
 ---
 
 There are several plugins in G6 which can be used inside and ouside G6 freely.
+
 - [Grid](#grid)
 - [Minimap](#minimap)
 - [Edge Bundling](#edge-bundling)
 
 ## Configure to Graph
-In G6, Minimap is a plugin, which is packed as independent package. Here, we import Grid and Minimap for example:
-```html
-<body>
-  <!-- Import Grid by CDN -->
-  <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.1.1/build/grid.js"></script>
-  <!-- Import Minimap by CDN -->
-  <script src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.1.1/build/minimap.js"></script>
-</body>
-```
 
 You only need to instantiate it and configure the minimap onto the instance of Graph:
 
 ```javascript
 // Instantialize the Grid plugin
-const grid = new Grid();
+const grid = new G6.Grid();
 // Instantialize the Minimap plugin
-const minimap = new Minimap();
+const minimap = new G6.Minimap();
 const graph = new G6.Graph({
   //... Other configurations
-  plugins: [ grid, minimap ] // Configure Grid and Minimap to the graph
+  plugins: [grid, minimap], // Configure Grid and Minimap to the graph
 });
 ```
 
-
 ## Grid
+
 Grid draw grids on the canvas.
 
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*y8u6Rrc78uIAAAAAAAAAAABkARQnAQ' width=300 />
 
 Grid has no configurations. Just use the code in [Configure to Graph](#configure-to-graph) to use it.
 
-
 ## Minimap
+
 Minimap is a tool for quick preview and exploration on large graph.
 
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*v1svQLkEPrUAAAAAAAAAAABkARQnAQ' width=300 />
@@ -59,19 +51,18 @@ It can be configured to adjust the styles and functions.
 | size | Array | The size of the Minimap |
 | delegateStyle | Object | Takes effect when `type` is `'delegate'`. The style of the delegate of the items on the graph |
 
-
 The `delegateStyle` has the properties:
 
-| Name | Type | Description |
-| --- | --- | --- | --- |
-| fill | String | Filling color |
-| stroke | String | Stroke color |
-| lineWidth | Number | The width of the stroke |
-| opacity | Number | Opacity |
-| fillOpacity | Number | Filling opacity |
-
+| Name        | Type   | Description             |
+| ----------- | ------ | ----------------------- |
+| fill        | String | Filling color           |
+| stroke      | String | Stroke color            |
+| lineWidth   | Number | The width of the stroke |
+| opacity     | Number | Opacity                 |
+| fillOpacity | Number | Filling opacity         |
 
 ## Edge Bundling
+
 In complex graph with large number of edges, edge bundling can help you to improve the visual clutter.
 
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*z9iXQq_kcrYAAAAAAAAAAABkARQnAQ' width=600 />

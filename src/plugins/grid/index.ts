@@ -1,9 +1,10 @@
-import createDOM from '@antv/dom-util/lib/create-dom'
-import modifyCSS from '@antv/dom-util/lib/modify-css'
+import createDOM from '@antv/dom-util/lib/create-dom';
+import modifyCSS from '@antv/dom-util/lib/modify-css';
 import Canvas from '@antv/g-base/lib/abstract/canvas';
 import { IGraph } from '../../interface/graph';
 import { ViewPortEventParam } from '../../types';
-import Base from '../base'
+import Base from '../base';
+import { mat3 } from '@antv/matrix-util';
 
 // 网格背景图片
 const GRID_PNG =
@@ -19,13 +20,13 @@ export default class Grid extends Base {
     const height: number = graph.get<number>('height');
 
     const container: HTMLDivElement = createDOM(
-      `<div style="position: absolute; left:0;top:0;right:0;bottom:0;overflow: hidden;z-index: -1;"></div>`
+      `<div style="position: absolute; left:0;top:0;right:0;bottom:0;overflow: hidden;z-index: -1;"></div>`,
     );
 
     const gridContainer: HTMLDivElement = createDOM(
       `<div 
         class='g6-grid' 
-        style='position:absolute;transform-origin: 0% 0% 0px; background-image: ${GRID_PNG}'></div>`
+        style='position:absolute;transform-origin: 0% 0% 0px; background-image: ${GRID_PNG}'></div>`,
     );
 
     container.appendChild(gridContainer);
@@ -34,7 +35,7 @@ export default class Grid extends Base {
       width: `${width / minZoom}px`,
       height: `${height / minZoom}px`,
       left: 0,
-      top: 0
+      top: 0,
     });
 
     graphContainer.insertBefore(container, canvas);
@@ -43,24 +44,26 @@ export default class Grid extends Base {
     this.set('gridContainer', gridContainer);
   }
 
+  // class-methods-use-this
   public getEvents() {
-    return { 
-      viewportchange: 'updateGrid' 
+    return {
+      viewportchange: 'updateGrid',
     };
   }
 
   /**
-   * viewportchange 事件的响应函数
-   * @param param 
+   * viewport change 事件的响应函数
+   * @param param
    */
   protected updateGrid(param: ViewPortEventParam) {
-    const gridContainer:HTMLDivElement = this.get('gridContainer');
-    const matrix = param.matrix;
+    const gridContainer: HTMLDivElement = this.get('gridContainer');
+    let { matrix } = param;
+    if (!matrix) matrix = mat3.create();
 
-    const transform = `matrix(${matrix[0]}, ${matrix[1]}, ${matrix[3]}, ${matrix[4]}, 0, 0)`
-    
+    const transform = `matrix(${matrix[0]}, ${matrix[1]}, ${matrix[3]}, ${matrix[4]}, 0, 0)`;
+
     modifyCSS(gridContainer, {
-      transform
+      transform,
     });
   }
 
@@ -69,9 +72,9 @@ export default class Grid extends Base {
   }
 
   public destroy() {
-    const graph: IGraph = this.get('graph')
+    const graph: IGraph = this.get('graph');
     const graphContainer = graph.get<HTMLDivElement>('container');
-    const container: HTMLDivElement = this.get('container')
+    const container: HTMLDivElement = this.get('container');
 
     graphContainer.removeChild(container);
   }

@@ -17,15 +17,15 @@ type LayoutConstructor<Cfg = any> = new () => BaseLayout<Cfg>;
  * 基础布局，将被自定义布局所继承
  */
 export class BaseLayout<Cfg = any> implements ILayout<Cfg> {
-  public nodes: NodeConfig[];
-  public edges: EdgeConfig[];
-  public positions: IPointTuple[];
-  public destroyed: boolean;
+  public nodes: NodeConfig[] | null = [];
+  public edges: EdgeConfig[] | null = [];
+  public positions: IPointTuple[] | null = [];
+  public destroyed: boolean = false;
 
   public init(data: GraphData) {
     const self = this;
-    self.nodes = data.nodes;
-    self.edges = data.edges;
+    self.nodes = data.nodes || [];
+    self.edges = data.edges || [];
   }
 
   public execute() {}
@@ -56,27 +56,31 @@ export class BaseLayout<Cfg = any> implements ILayout<Cfg> {
 
 const Layout: {
   [layoutType: string]: any;
-  registerLayout<Cfg>(type: string, layout: LayoutOption<Cfg>, layoutCons?: LayoutConstructor<Cfg>): void;
+  registerLayout<Cfg>(
+    type: string,
+    layout: LayoutOption<Cfg>,
+    layoutCons?: LayoutConstructor<Cfg>,
+  ): void;
 } = {
   /**
    * 注册布局的方法
    * @param {string} type 布局类型，外部引用指定必须，不要与已有布局类型重名
    * @param {object} layout 布局方法
    */
-  registerLayout<Cfg>(type, layout, layoutCons = BaseLayout) {
+  registerLayout<Cfg>(type: string, layout: LayoutOption<Cfg>, layoutCons = BaseLayout) {
     if (!layout) {
-      throw new Error('please specify handler for this layout:' + type);
+      throw new Error(`please specify handler for this layout: ${type}`);
     }
 
     // tslint:disable-next-line: max-classes-per-file
     class GLayout extends layoutCons {
       constructor(cfg: Cfg) {
         super();
-        const self = this;
-        const props = {};
+        const self = this as any;
+        const props: object = {};
         const defaultCfg = self.getDefaultCfg();
-        mix(props, defaultCfg, layout, cfg);
-        each(props, (value, key) => {
+        mix(props, defaultCfg, layout, cfg as unknown);
+        each(props, (value, key: string) => {
           self[key] = value;
         });
       }

@@ -1,8 +1,8 @@
 import { Point } from '@antv/g-base/lib/types';
 import { IGroup } from '@antv/g-canvas/lib/interfaces';
 import { mat3, transform, vec3 } from '@antv/matrix-util';
-import isArray from '@antv/util/lib/is-array'
-import { GraphData, ICircle, IEllipse, IRect, Matrix } from '../types';
+import isArray from '@antv/util/lib/is-array';
+import { GraphData, ICircle, IEllipse, IRect, Matrix, EdgeConfig, NodeIdxMap } from '../types';
 
 /**
  * 是否在区间内
@@ -106,16 +106,15 @@ export const getRectIntersectByPoint = (rect: IRect, point: Point): Point | null
  * @return {Point} applied point
  */
 export const getCircleIntersectByPoint = (circle: ICircle, point: Point): Point | null => {
-  const cx = circle.x;
-  const cy = circle.y;
-  const r = circle.r;
+  const { x: cx, y: cy, r } = circle;
   const { x, y } = point;
-  const d = Math.sqrt(Math.pow(x - cx, 2) + Math.pow(y - cy, 2));
+
+  const dx = x - cx;
+  const dy = y - cy;
+  const d = Math.sqrt(dx * dx + dy * dy);
   if (d < r) {
     return null;
   }
-  const dx = x - cx;
-  const dy = y - cy;
   const signX = Math.sign(dx);
   const signY = Math.sign(dy);
   const angle = Math.atan(dy / dx);
@@ -131,7 +130,7 @@ export const getCircleIntersectByPoint = (circle: ICircle, point: Point): Point 
  * @param {Object} point 点 x,y
  * @return {object} applied point
  */
-export const getEllispeIntersectByPoint = (ellipse: IEllipse, point: Point): Point => {
+export const getEllipseIntersectByPoint = (ellipse: IEllipse, point: Point): Point => {
   const a = ellipse.rx;
   const b = ellipse.ry;
   const cx = ellipse.x;
@@ -160,12 +159,12 @@ export const getEllispeIntersectByPoint = (ellipse: IEllipse, point: Point): Poi
  * @return {Point} transformed point
  */
 export const applyMatrix = (point: Point, matrix: Matrix, tag: 0 | 1 = 1): Point => {
-  const vector = [ point.x, point.y, tag ]
-  if(!matrix) {
-    matrix = mat3.create()
+  const vector = [point.x, point.y, tag];
+  if (!matrix) {
+    matrix = mat3.create();
   }
-  
-  vec3.transformMat3(vector, vector, matrix)
+
+  vec3.transformMat3(vector, vector, matrix);
 
   return {
     x: vector[0],
@@ -181,13 +180,13 @@ export const applyMatrix = (point: Point, matrix: Matrix, tag: 0 | 1 = 1): Point
  * @return {object} transformed point
  */
 export const invertMatrix = (point: Point, matrix: Matrix, tag: 0 | 1 = 1): Point => {
-  if (!matrix) { 
-    matrix = mat3.create(); 
+  if (!matrix) {
+    matrix = mat3.create();
   }
 
-  const inversedMatrix = mat3.invert([], matrix)
-  const vector = [ point.x, point.y, tag ]
-  vec3.transformMat3(vector, vector, inversedMatrix)
+  const inversedMatrix = mat3.invert([], matrix);
+  const vector = [point.x, point.y, tag];
+  vec3.transformMat3(vector, vector, inversedMatrix);
 
   return {
     x: vector[0],
@@ -233,9 +232,9 @@ export const distance = (p1: Point, p2: Point): number => {
  */
 export const scaleMatrix = (matrix: Matrix[], ratio: number) => {
   const result: Matrix[] = [];
-  matrix.forEach((row) => {
+  matrix.forEach(row => {
     const newRow: number[] = [];
-    row.forEach((v) => {
+    row.forEach(v => {
       newRow.push(v * ratio);
     });
     result.push(newRow);
@@ -283,14 +282,15 @@ export const floydWarshall = (adjMatrix: Matrix[]): Matrix[] => {
  * @param directed whether it's a directed graph
  */
 export const getAdjMatrix = (data: GraphData, directed: boolean): Matrix[] => {
-  const nodes = data.nodes;
-  const edges = data.edges;
+  const { nodes, edges } = data;
   const matrix: Matrix[] = [];
   // map node with index in data.nodes
-  const nodeMap = {};
+  const nodeMap: {
+    [key: string]: number;
+  } = {};
 
-  if(!nodes) {
-    throw new Error('invalid nodes data!')
+  if (!nodes) {
+    throw new Error('invalid nodes data!');
   }
   if (nodes) {
     nodes.forEach((node, i) => {
@@ -301,11 +301,10 @@ export const getAdjMatrix = (data: GraphData, directed: boolean): Matrix[] => {
   }
 
   if (edges) {
-    edges.forEach((e) => {
-      const source = e.source;
-      const target = e.target;
-      const sIndex = nodeMap[source];
-      const tIndex = nodeMap[target];
+    edges.forEach(e => {
+      const { source, target } = e;
+      const sIndex = nodeMap[source as string];
+      const tIndex = nodeMap[target as string];
       matrix[sIndex][tIndex] = 1;
       if (!directed) {
         matrix[tIndex][sIndex] = 1;
@@ -322,12 +321,13 @@ export const getAdjMatrix = (data: GraphData, directed: boolean): Matrix[] => {
  * @param vec 移动向量
  */
 export const translate = (group: IGroup, vec: Point) => {
-  let matrix: Matrix = group.getMatrix()
-  matrix = transform(matrix, [
-    [ 't',  vec.x, vec.y ]
-  ])
-  group.setMatrix(matrix)
-}
+  let matrix: Matrix = group.getMatrix();
+  if (!matrix) {
+    matrix = mat3.create();
+  }
+  matrix = transform(matrix, [['t', vec.x, vec.y]]);
+  group.setMatrix(matrix);
+};
 
 /**
  * 移动到指定坐标点
@@ -335,16 +335,17 @@ export const translate = (group: IGroup, vec: Point) => {
  * @param point 移动到的坐标点
  */
 export const move = (group: IGroup, point: Point) => {
-  const matrix: Matrix = group.getMatrix()
+  let matrix: Matrix = group.getMatrix();
+  if (!matrix) {
+    matrix = mat3.create();
+  }
   const orix = group.get('x') || 0;
   const oriy = group.get('y') || 0;
-  transform(matrix, [
-    ['t', point.x - orix, point.y - oriy ]
-  ])
-  group.set('x', point.x) // ??
-  group.set('y', point.y) // ??
-  group.setMatrix(matrix)
-}
+  const movedMatrix = transform(matrix, [['t', point.x - orix, point.y - oriy]]);
+  group.set('x', point.x);
+  group.set('y', point.y);
+  group.setMatrix(movedMatrix);
+};
 
 /**
  * 缩放 group
@@ -352,34 +353,52 @@ export const move = (group: IGroup, point: Point) => {
  * @param point 在x 和 y 方向上的缩放比例
  */
 export const scale = (group: IGroup, ratio: number | number[]) => {
-  let matrix: Matrix = group.getMatrix()
-
-  let scaleXY = ratio
-  if(!isArray(ratio)) {
-    scaleXY = [ratio, ratio]
+  let matrix: Matrix = group.getMatrix();
+  if(!matrix) {
+    matrix = mat3.create();
   }
 
-  if(isArray(ratio) && ratio.length === 0) {
-    scaleXY = [ratio[0], ratio[0]]
+  let scaleXY = ratio;
+  if (!isArray(ratio)) {
+    scaleXY = [ratio, ratio];
   }
 
-  matrix = transform(matrix, [
-    ['s', scaleXY[0], scaleXY[1]]
-  ])
+  if (isArray(ratio) && ratio.length === 0) {
+    scaleXY = [ratio[0], ratio[0]];
+  }
 
-  group.setMatrix(matrix)
-}
+  matrix = transform(matrix, [['s', (scaleXY as number[])[0], (scaleXY as number[])[1]]]);
+
+  group.setMatrix(matrix);
+};
 
 /**
- * 
+ *
  * @param group Group 实例
  * @param ratio 选择角度
  */
 export const rotate = (group: IGroup, angle: number) => {
-  let matrix: Matrix = group.getMatrix()
-  matrix = transform(matrix, [
-    ['r', angle]
-  ])
+  let matrix: Matrix = group.getMatrix();
+  if(!matrix) {
+    matrix = mat3.create();
+  }
+  matrix = transform(matrix, [['r', angle]]);
 
-  group.setMatrix(matrix)
-}
+  group.setMatrix(matrix);
+};
+
+export const getDegree = (n: number, nodeIdxMap: NodeIdxMap, edges: EdgeConfig[]): number[] => {
+  const degrees: number[] = [];
+  for (let i = 0; i < n; i++) {
+    degrees[i] = 0;
+  }
+  edges.forEach(e => {
+    if (e.source) {
+      degrees[nodeIdxMap[e.source]] += 1;
+    }
+    if (e.target) {
+      degrees[nodeIdxMap[e.target]] += 1;
+    }
+  });
+  return degrees;
+};
