@@ -1,4 +1,18 @@
 # ChangeLog
+#### 3.3.6
+- feat: support edge weight for dagre layout;
+- feat: automatically add draggable to keyShape, users do not need to assign it when custom a node or an edge;
+- fix: cannot read 0 or null problem in getPointByCanvas;
+- fix: brush-select bug;
+- fix: set autoDraw to canvas when graph's setAutoPaint is called;
+- fix: modify the usage of bbox in view controller since the interface is chagned by G;
+- fix: the shape.attr error in updateShapeStyle;
+- fix: local refresh influence on changeData;
+- refactor: upgrade g-canvas to 0.3.23 to solve lacking of removeChild function;
+- doc: update the demo fo custom behavior doc;
+- doc: add plugin demos and cases for site;
+- doc: fix shouldUpdate problem in treeWithLargeData demo on the site.
+
 #### 3.3.5
 - fix: 3.3.4 is not published successfully;
 

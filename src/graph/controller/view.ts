@@ -39,7 +39,7 @@ export default class ViewController {
     const width: number = graph.get('width');
     const height: number = graph.get('height');
     group.resetMatrix();
-    const bbox = group.getBBox();
+    const bbox = group.getCanvasBBox();
     const viewCenter = this.getViewCenter();
     const groupCenter: Point = {
       x: bbox.x + bbox.width / 2,
