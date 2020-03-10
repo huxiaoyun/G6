@@ -12,6 +12,7 @@ import { EdgeConfig, Item, ITEM_TYPE, ModelConfig, NodeConfig, NodeMap } from '.
 import Graph from '../graph';
 
 import { IEdge, INode } from '../../interface/item';
+import { mix } from '@antv/util';
 
 const NODE = 'node';
 const EDGE = 'edge';
@@ -46,10 +47,12 @@ export default class ItemController {
     const upperType = upperFirst(type);
 
     let item: Item | null = null;
+    // 获取 this.get('styles') 中的值
     let styles = graph.get(type + upperFirst(STATE_SUFFIX)) || {};
     const defaultModel = graph.get(CFG_PREFIX + upperType);
 
     if (model[STATE_SUFFIX]) {
+      // 设置 this.get('styles') 中的值
       styles = model[STATE_SUFFIX];
     }
 
@@ -57,6 +60,7 @@ export default class ItemController {
     if (mapper) {
       const mappedModel = mapper(model);
       if (mappedModel[STATE_SUFFIX]) {
+        // 设置 this.get('styles') 中的值
         styles = mappedModel[STATE_SUFFIX];
         delete mappedModel[STATE_SUFFIX];
       }
@@ -119,7 +123,6 @@ export default class ItemController {
     if (item) {
       graph.get(`${type}s`).push(item);
       graph.get('itemMap')[item.get('id')] = item;
-      graph.autoPaint();
       graph.emit('afteradditem', { item, model });
       // eslint-disable-next-line consistent-return
       return item as T;
@@ -136,7 +139,7 @@ export default class ItemController {
    */
   public updateItem(item: Item | string, cfg: EdgeConfig | NodeConfig) {
     const { graph } = this;
-
+    
     if (isString(item)) {
       item = graph.findById(item) as Item;
     }
@@ -200,17 +203,11 @@ export default class ItemController {
     item.update(cfg);
 
     if (type === NODE) {
-      const autoPaint = graph.get('autoPaint');
-      graph.setAutoPaint(false);
       const edges: IEdge[] = (item as INode).getEdges();
       each(edges, (edge: IEdge) => {
         graph.refreshItem(edge);
       });
-
-      graph.setAutoPaint(autoPaint);
     }
-
-    graph.autoPaint();
     graph.emit('afterupdateitem', { item, cfg });
   }
 
@@ -251,7 +248,6 @@ export default class ItemController {
     }
 
     item.destroy();
-    graph.autoPaint();
     graph.emit('afterremoveitem', { item });
   }
 
@@ -260,22 +256,28 @@ export default class ItemController {
    *
    * @param {Item} item Item 实例
    * @param {string} state 状态名称
-   * @param {boolean} enabled 是否启用状态
+   * @param {boolean} value 是否启用状态或状态值
    * @returns {void}
    * @memberof ItemController
    */
-  public setItemState(item: Item, state: string, enabled: boolean): void {
+  public setItemState(item: Item, state: string, value: string | boolean): void {
     const { graph } = this;
-    if (item.hasState(state) === enabled) {
+
+    let stateName = state
+    if(isString(value)) {
+      stateName = `${state}:${value}`
+    }
+
+    if (item.hasState(stateName) === value || (isString(value) && item.hasState(stateName))) {
       return;
     }
 
-    graph.emit('beforeitemstatechange', { item, state, enabled });
+    graph.emit('beforeitemstatechange', { item, state: stateName, enabled: value });
 
-    item.setState(state, enabled);
+    item.setState(state, value);
 
     graph.autoPaint();
-    graph.emit('afteritemstatechange', { item, state, enabled });
+    graph.emit('afteritemstatechange', { item, state: stateName, enabled: value });
   }
 
   /**
@@ -296,7 +298,6 @@ export default class ItemController {
 
     item.clearStates(states);
 
-    graph.autoPaint();
     graph.emit('afteritemstatesclear', { item, states });
   }
 
@@ -318,7 +319,6 @@ export default class ItemController {
     // 调用 Item 的 refresh 方法，实现刷新功能
     item.refresh();
 
-    graph.autoPaint();
     graph.emit('afteritemrefresh', { item });
   }
 
@@ -341,8 +341,6 @@ export default class ItemController {
     item.changeVisibility(visible);
 
     if (item.getType() === NODE) {
-      const autoPaint = graph.get('autoPaint');
-      graph.setAutoPaint(false);
       const edges = (item as INode).getEdges();
       each(edges, (edge: IEdge) => {
         // 若隐藏节点，则将与之关联的边也隐藏
@@ -353,11 +351,7 @@ export default class ItemController {
 
         this.changeItemVisibility(edge, visible);
       });
-
-      graph.setAutoPaint(autoPaint);
     }
-
-    graph.autoPaint();
     graph.emit('afteritemvisibilitychange', { item, visible });
   }
 

@@ -4,7 +4,6 @@ import { mix } from '@antv/util';
 import { Item, NodeConfig, ShapeStyle, ModelConfig } from '../../types';
 import Global from '../../global';
 import Shape from '../shape';
-import { ShapeOptions } from '../../interface/shape';
 
 // 菱形shape
 Shape.registerNode(
@@ -52,7 +51,7 @@ Shape.registerNode(
     labelPosition: 'center',
     drawShape(cfg: NodeConfig, group: GGroup): IShape {
       const { icon: defaultIcon } = this.options as ModelConfig;
-      const style = (this as ShapeOptions).getShapeStyle!(cfg);
+      const style = this.getShapeStyle!(cfg);
       const icon = mix({}, defaultIcon, cfg.icon);
 
       const keyShape = group.addShape('path', {
@@ -72,9 +71,8 @@ Shape.registerNode(
           },
           className: 'diamond-icon',
           name: 'diamond-icon',
+          draggable: true
         });
-
-        image.set('capture', false);
       }
 
       (this as any).drawLinkPoints(cfg, group);
@@ -91,7 +89,7 @@ Shape.registerNode(
       const linkPoints = mix({}, defaultLinkPoints, cfg.linkPoints);
 
       const { top, left, right, bottom, size: markSize, ...markStyle } = linkPoints;
-      const size = (this as ShapeOptions).getSize!(cfg);
+      const size = this.getSize!(cfg);
       const width = size[0];
       const height = size[1];
       if (left) {
@@ -155,7 +153,7 @@ Shape.registerNode(
       }
     },
     getPath(cfg: NodeConfig): Array<Array<string | number>> {
-      const size = (this as ShapeOptions).getSize!(cfg);
+      const size = this.getSize!(cfg);
       const width = size[0];
       const height = size[1];
       const path = [

@@ -7,6 +7,8 @@ import {
   IShapeBase,
   Item,
   ModelConfig,
+  NodeConfig,
+  EdgeConfig,
   ModelStyle,
   ShapeStyle,
   Indexable,
@@ -81,7 +83,7 @@ export interface IItemBase {
 
   isItem(): boolean;
 
-  getKeyShapeStyle(): ShapeStyle | void;
+  getShapeStyleByName(name?: string): ShapeStyle | void;
 
   /**
    * 获取当前元素的所有状态
@@ -106,9 +108,9 @@ export interface IItemBase {
    * 更改元素状态， visible 不属于这个范畴
    * @internal 仅提供内部类 graph 使用
    * @param {String} state 状态名
-   * @param {Boolean} enable 节点状态值
+   * @param {Boolean} value 节点状态值
    */
-  setState(state: string, enable: boolean): void;
+  setState(state: string, value: string | boolean): void;
 
   clearStates(states?: string | string[]): void;
 
@@ -128,7 +130,7 @@ export interface IItemBase {
    * 节点数据模型
    * @return {Object} 数据模型
    */
-  getModel(): ModelConfig;
+  getModel(): NodeConfig | EdgeConfig;
 
   /**
    * 节点类型

@@ -1,4 +1,5 @@
 import GCanvas from '@antv/g-canvas/lib/canvas';
+import GSVGCanvas from '@antv/g-svg/lib/canvas';
 import Base, { IPluginBaseConfig } from '../base';
 import isString from '@antv/util/lib/is-string';
 import createDOM from '@antv/dom-util/lib/create-dom';
@@ -17,6 +18,8 @@ const { max } = Math;
 const DEFAULT_MODE = 'default';
 const KEYSHAPE_MODE = 'keyShape';
 const DELEGATE_MODE = 'delegate';
+const SVG = 'svg';
+const CANVAS = 'canvas';
 
 interface MiniMapConfig extends IPluginBaseConfig {
   viewportClassName?: string;
@@ -319,7 +322,6 @@ export default class MiniMap extends Base {
     group.clear();
 
     this.showGraphEdgeKeyShape(group);
-
     each(graph!.getNodes(), (node) => {
       if (node.isVisible()) {
         const bbox = node.getBBox();
@@ -383,13 +385,22 @@ export default class MiniMap extends Base {
       '<div class="g6-minimap-container" style="position: relative;"></div>',
     );
     container.appendChild(containerDOM);
-
-    const canvas = new GCanvas({
-      container: containerDOM,
-      width: size[0],
-      height: size[1],
-    });
-
+    
+    let canvas;
+    const renderer = graph.get('renderer');
+    if(renderer === SVG) {
+      canvas = new GSVGCanvas({
+        container: containerDOM,
+        width: size[0],
+        height: size[1],
+      });
+    } else {
+      canvas = new GCanvas({
+        container: containerDOM,
+        width: size[0],
+        height: size[1],
+      });
+    }
     self.set('canvas', canvas);
     self.updateCanvas();
   }

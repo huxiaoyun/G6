@@ -1,7 +1,7 @@
 import GGroup from '@antv/g-canvas/lib/group';
 import { IShape } from '@antv/g-canvas/lib/interfaces';
 import deepMix from '@antv/util/lib/deep-mix';
-import { mix } from '@antv/util';
+import { mix, isString } from '@antv/util';
 import { Item, NodeConfig, ModelConfig, ShapeStyle } from '../../types';
 import Shape from '../shape';
 import Global from '../../global';
@@ -91,7 +91,7 @@ Shape.registerNode(
     shapeType: 'modelRect',
     drawShape(cfg: NodeConfig, group: GGroup): IShape {
       const { preRect: defaultPreRect } = this.options as ModelConfig;
-      const style = (this as ShapeOptions).getShapeStyle!(cfg);
+      const style = this.getShapeStyle!(cfg);
       const size = (this as ShapeOptions).getSize!(cfg);
       const width = size[0];
       const height = size[1];
@@ -115,6 +115,7 @@ Shape.registerNode(
           },
           className: 'pre-rect',
           name: 'pre-rect',
+          draggable: true
         });
       }
 
@@ -138,19 +139,18 @@ Shape.registerNode(
 
       if (logoIcon.show) {
         const { width: w, height: h, x, y, offset, ...logoIconStyle } = logoIcon;
-        const image = group.addShape('image', {
+        group.addShape('image', {
           attrs: {
             ...logoIconStyle,
             x: x || -width / 2 + (w as number) + (offset as number),
-            y: y || -h! / 2,
+            y: y || -(h as number) / 2,
             width: w,
             height: h,
           },
           className: 'rect-logo-icon',
           name: 'rect-logo-icon',
+          draggable: true
         });
-
-        image.set('capture', false);
       }
     },
     /**
@@ -170,15 +170,14 @@ Shape.registerNode(
           attrs: {
             ...iconStyle,
             x: x || width / 2 - (w as number) + (offset as number),
-            y: y || -h! / 2,
+            y: y || -(h as number) / 2,
             width: w,
             height: h,
           },
           className: 'rect-state-icon',
           name: 'rect-state-icon',
+          draggable: true
         });
-
-        image.set('capture', false);
       }
     },
     /**
@@ -282,7 +281,7 @@ Shape.registerNode(
 
       const { style: fontStyle } = labelCfg;
       const { style: descriptionStyle, paddingTop: descriptionPaddingTop } = descriptionCfg;
-      if (cfg.description) {
+      if (isString(cfg.description)) {
         label = group.addShape('text', {
           attrs: {
             ...fontStyle,
@@ -292,6 +291,7 @@ Shape.registerNode(
           },
           className: 'text-shape',
           name: 'text-shape',
+          draggable: true
         });
 
         group.addShape('text', {
@@ -303,6 +303,7 @@ Shape.registerNode(
           },
           className: 'rect-description',
           name: 'rect-description',
+          draggable: true
         });
       } else {
         label = group.addShape('text', {
@@ -311,6 +312,7 @@ Shape.registerNode(
             x: offsetX,
             y: 7,
             text: cfg.label,
+            draggable: true
           },
         });
       }
@@ -397,13 +399,14 @@ Shape.registerNode(
             },
             className: 'node-label',
             name: 'node-label',
+            draggable: true
           });
         } else {
           const cfgStyle = cfg.labelCfg ? cfg.labelCfg.style : {};
           const labelStyle = mix({}, label.attr(), cfgStyle);
           if (cfg.label) labelStyle.text = cfg.label;
           labelStyle.x = offsetX;
-          if (cfg.description) labelStyle.y = -5;
+          if (isString(cfg.description)) labelStyle.y = -5;
           if (description) {
             description.resetMatrix();
             description.attr({
@@ -414,7 +417,7 @@ Shape.registerNode(
           label.attr(labelStyle);
         }
       }
-      if (cfg.description) {
+      if (isString(cfg.description)) {
         const descriptionCfg = deepMix({}, defaultDescritionCfg, cfg.descriptionCfg);
         const { paddingTop } = descriptionCfg;
         if (!description) {
@@ -427,11 +430,12 @@ Shape.registerNode(
             },
             className: 'rect-description',
             name: 'rect-description',
+            draggable: true
           });
         } else {
           const cfgStyle = cfg.descriptionCfg ? cfg.descriptionCfg.style : {};
           const descriptionStyle = mix({}, description.attr(), cfgStyle);
-          if (cfg.description) descriptionStyle.text = cfg.description;
+          if (isString(cfg.description)) descriptionStyle.text = cfg.description;
           descriptionStyle.x = offsetX;
           description.resetMatrix();
           description.attr({

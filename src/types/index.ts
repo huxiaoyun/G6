@@ -95,7 +95,9 @@ export type ModelStyle = Partial<{
   [key: string]: unknown;
   style: ShapeStyle;
   stateStyles: {
-    [key: string]: ShapeStyle;
+    [key: string]: ShapeStyle | {
+      [key: string]: ShapeStyle
+    }
   };
   // loop edge config
   loopCfg: LoopConfig;
@@ -116,6 +118,10 @@ export type LabelStyle = Partial<{
   fill: string | null;
   rotateCenter: string;
   lineWidth?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
 }>;
 
 export type Easeing =
@@ -209,6 +215,11 @@ export interface ModelConfig extends ModelStyle {
   startPoint?: IPoint;
   endPoint?: IPoint;
   children?: TreeGraphData[];
+  stateStyles?: {
+    [key: string]: ShapeStyle | {
+      [key: string]: ShapeStyle
+    }
+  }
 }
 
 export interface NodeConfig extends ModelConfig {
@@ -272,8 +283,10 @@ export interface TreeGraphData {
   x?: number;
   y?: number;
   children?: TreeGraphData[];
-  depth?: number;
   data?: ModelConfig;
+  side?: 'left' | 'right',
+  depth?: number;
+  collapsed ?: boolean;
 }
 
 // Behavior type file
@@ -327,30 +340,20 @@ export enum G6Event {
   CANVAS_DRAGEND = 'canvas:dragend',
 }
 
-type GetEvents = 'getEvents';
-type ShouldBegin = 'shouldBegin';
-type ShouldUpdate = 'shouldUpdate';
-type ShouldEnd = 'shouldEnd';
-type Bind = 'bind';
-type Unbind = 'unbind';
-
 export type DefaultBehaviorType = IG6GraphEvent | string | number | object;
 
-export type BehaviorOption<U> = {
-  [T in keyof U]: T extends GetEvents
-    ? () => { [key in G6Event]?: string }
-    : T extends ShouldBegin
-    ? (cfg?: ModelConfig) => boolean
-    : T extends ShouldEnd
-    ? (cfg?: ModelConfig) => boolean
-    : T extends ShouldUpdate
-    ? (cfg?: ModelConfig) => boolean
-    : T extends Bind
-    ? (graph: IGraph) => void
-    : T extends Unbind
-    ? (graph: IGraph) => void
-    : (...args: DefaultBehaviorType[]) => unknown;
-};
+export interface BehaviorOption {
+  getEvents(): {
+    [key in G6Event]?: string;
+  };
+  getDefaultCfg?(): object;
+  shouldBegin?(e?: IG6GraphEvent): boolean;
+  shouldUpdate?(e?: IG6GraphEvent): boolean;
+  shouldEnd?(e?: IG6GraphEvent): boolean;
+  bind?(e: IGraph): void;
+  unbind?(e: IGraph): void;
+  [key: string]: (...args) => any;
+}
 
 export type IEvent = Record<G6Event, string>;
 

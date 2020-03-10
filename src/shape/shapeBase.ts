@@ -6,10 +6,9 @@ import GGroup from '@antv/g-canvas/lib/group';
 import { IShape } from '@antv/g-canvas/lib/interfaces';
 import { ShapeOptions, ILabelConfig } from '../interface/shape';
 import { IPoint, Item, LabelStyle, ShapeStyle, ModelConfig } from '../types';
-import { cloneDeep, get, merge } from 'lodash';
 import Global from '../global';
 import { mat3, transform } from '@antv/matrix-util';
-import { deepMix, each, mix } from '@antv/util';
+import { deepMix, each, mix, isString, isBoolean, isPlainObject, clone } from '@antv/util';
 
 const CLS_SHAPE_SUFFIX = '-shape';
 const CLS_LABEL_SUFFIX = '-label';
@@ -53,13 +52,13 @@ export const shapeBase: ShapeOptions = {
   drawLabel(cfg: ModelConfig, group: GGroup): IShape {
     const { labelCfg: defaultLabelCfg } = this.options as ModelConfig;
 
-    const labelCfg = merge({}, defaultLabelCfg, cfg.labelCfg) as ILabelConfig;
+    const labelCfg = mix({}, defaultLabelCfg, cfg.labelCfg) as ILabelConfig;
     const labelStyle = this.getLabelStyle!(cfg, labelCfg, group);
     const rotate = labelStyle.rotate;
     delete labelStyle.rotate;
     const label = group.addShape('text', {
       attrs: labelStyle,
-      capture: false,
+      draggable: true,
       className: 'text-shape',
       name: 'text-shape',
     });
@@ -148,11 +147,21 @@ export const shapeBase: ShapeOptions = {
   },
   updateShapeStyle(cfg: ModelConfig, item: Item) {
     const group = item.getContainer();
-    const shapeClassName = this.itemType + CLS_SHAPE_SUFFIX;
-    const shape = group.find(element => element.get('className') === shapeClassName) || item.getKeyShape();
+    const shape = item.getKeyShape();
     const shapeStyle = mix({}, shape.attr(), cfg.style);
-    if (shape) {
-      shape.attr(shapeStyle);
+    for(const key in shapeStyle) {
+      const style = shapeStyle[key]
+      if(isPlainObject(style)) {
+        // 更新图元素样式，支持更新子元素
+        const subShape = group.find(element => element.get('name') === key)
+        if(subShape) {
+          subShape.attr(style)
+        }
+      } else {
+        shape.attr({
+          [key]: style
+        })
+      }
     }
   },
 
@@ -162,7 +171,8 @@ export const shapeBase: ShapeOptions = {
     const labelClassName = this.itemType + CLS_LABEL_SUFFIX;
     const label = group.find(element => element.get('className') === labelClassName);
 
-    if (cfg.label) {
+    // 防止 cfg.label = "" 的情况
+    if (cfg.label || cfg.label === '') {
       // 若传入的新配置中有 label，（用户没传入但原先有 label，label 也会有值）
       if (!label) {
         // 若原先不存在 label，则绘制一个新的 label
@@ -217,29 +227,119 @@ export const shapeBase: ShapeOptions = {
    * @param  {String | Boolean} value 状态值
    * @param  {G6.Item} item 节点
    */
-  setState(name: string, value: boolean, item: Item) {
+  setState(name: string, value: string | boolean, item: Item) {
     const shape: IShape = item.get('keyShape');
     if (!shape) {
       return;
     }
-    const itemStateStyle = item.getStateStyle(name);
-    const stateStyle = (this as any).getStateStyle(name, value, item);
-    const styles = merge({}, stateStyle, itemStateStyle);
+
+    const stateName = isBoolean(value) ? name : `${name}:${value}`
+    const shapeStateStyle = this.getStateStyle(stateName, true, item)
+    const itemStateStyle = item.getStateStyle(stateName);
+
+    // 要设置或取消的状态的样式
+    // 当没有 state 状态时，默认使用 model.stateStyles 中的样式
+    const styles = mix({}, itemStateStyle || shapeStateStyle);
+    const group = item.getContainer()
+
     if (value) {
-      // 如果设置状态,在原本状态上叠加绘图属性
-      shape.attr(styles);
-    } else {
-      // 取消状态时重置所有状态，依次叠加仍有的状态
-      const style = item.getCurrentStatesStyle();
-      // 如果默认状态下没有设置attr，在某状态下设置了，需要重置到没有设置的状态
-      each(styles, (val, attr) => {
-        if (!(style as any)[attr]) {
-          (style as any)[attr] = null;
+      // style 为要设置的状态的样式
+      for(const key in styles) {
+        const style = styles[key]
+        if(isPlainObject(style)) {
+          const subShape = group.find(element => element.get('name') === key)
+          if(subShape) {
+            subShape.attr(style)
+          }
+        } else {
+          // 非纯对象，则认为是设置到 keyShape 上面的
+          shape.attr({
+            [key]: style
+          })
         }
-      });
-      shape.attr(style);
+      }
+    } else {
+      // 所有生效的 state 的样式
+      const enableStatesStyle = clone(item.getCurrentStatesStyle());
+
+      // 原始样式
+      const originStyle = clone(item.getOriginStyle());
+
+      const keyShapeName = shape.get('name')
+      const keyShapeStyles = shape.attr()
+
+      // 已有样式 - 要取消的状态的样式
+      const filtetDisableStatesStyle = {}
+
+      // style 为要取消的状态的样式
+      for(const p in styles) {
+        const style = styles[p]
+        if(isPlainObject(style)) {
+          const subShape = group.find(element => element.get('name') === p)
+          if(subShape) {
+            const subShapeStyles = subShape.attr()
+            // const current = subShapeStyles[p]
+            each(style, (value, key) => {
+              if(subShapeStyles[key]) {
+                delete subShapeStyles[key]
+              }
+            })
+            filtetDisableStatesStyle[p] = subShapeStyles
+          }
+        } else {
+          // 从图元素现有的样式中删除本次要取消的 states 中存在的属性值
+          if(keyShapeStyles[p]) {
+            delete keyShapeStyles[p]
+          }
+        }
+      }
+
+      // 从图元素现有的样式中删除本次要取消的 states 中存在的属性值后，
+      // 如果 keyShape 有 name 属性，则 filtetDisableStatesStyle 的格式为 { keyShapeName: {} }
+      // 否则为普通对象
+      if(!keyShapeName) {
+        mix(filtetDisableStatesStyle, keyShapeStyles)
+      } else {
+        filtetDisableStatesStyle[keyShapeName] = keyShapeStyles
+      }
+
+      for(const key in enableStatesStyle) {
+        const enableStyle = enableStatesStyle[key]
+        if(!isPlainObject(enableStyle)) {
+          // 把样式属性merge到keyShape中
+          if(!keyShapeName) {
+            mix(originStyle, {
+              [key]: enableStyle
+            })
+          } else {
+            mix(originStyle[keyShapeName], {
+              [key]: enableStyle
+            })
+          }
+          delete enableStatesStyle[key]
+        }
+      }
+
+      const originstyles = {}
+      deepMix(originstyles, originStyle, filtetDisableStatesStyle, enableStatesStyle)
+
+      for(const key in originstyles) {
+        const style = originstyles[key]
+        if(isPlainObject(style)) {
+          const subShape = group.find(element => element.get('name') === key)
+          if(subShape) {
+            subShape.attr(style)
+          }
+        } else {
+          // 非纯对象，则认为是设置到 keyShape 上面的
+          shape.attr({
+            [key]: style
+          })
+        }
+      }
     }
   },
+
   /**
    * 获取不同状态下的样式
    *
@@ -250,20 +350,13 @@ export const shapeBase: ShapeOptions = {
    */
   getStateStyle(name: string, value: string | boolean, item: Item): ShapeStyle {
     const model = item.getModel();
-
-    const { style: defaultStyle } = this.options as ModelConfig;
-
+    
     if (value) {
       const modelStateStyle = model.stateStyles ? model.stateStyles[name] : undefined;
-      return merge({}, model.style, modelStateStyle);
+      return mix({}, model.style, modelStateStyle);
     }
 
-    const states = item.getStates();
-    const style = cloneDeep(defaultStyle);
-    states.forEach(state => {
-      merge(style, get(defaultStyle, state, {}), state, model.style);
-    });
-    return style as ShapeStyle;
+    return {} as ShapeStyle;
   },
   /**
    * 获取控制点

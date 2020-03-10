@@ -121,6 +121,11 @@ describe('tree graph without animate', () => {
       type: 'rect',
       children: [{ x: 150, y: 150, id: 'SubTreeNode3.1.1' }],
     };
+    graph.on('afteraddchild', function(e) {
+      expect(e.item.getModel().id === 'SubTreeNode3.1' || e.item.getModel().id === 'SubTreeNode3.1.1').toBe(true);
+      expect(e.item.get('parent').getModel().id === 'SubTreeNode3' || e.item.get('parent').getModel().id === 'SubTreeNode3.1').toBe(true);
+      expect(e.parent.getModel().id === 'SubTreeNode3' || e.parent.getModel().id === 'SubTreeNode3.1').toBe(true);
+    });
 
     graph.addChild(child, parent);
 
@@ -571,6 +576,7 @@ describe('tree graph with animate', () => {
     let collapsed = true;
     graph3.on('afteranimate', () => {
       if (collapsed) {
+        console.log(parent.getModel().collapsed, child.destroyed)
         expect(parent.getModel().collapsed).toBe(true);
         expect(child.destroyed).toBe(true);
       } else {

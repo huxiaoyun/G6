@@ -16,7 +16,7 @@ export default {
     if ((this as any).get('trigger') === 'mouseenter') {
       return {
         'node:mouseenter': 'setAllItemStates',
-        'node:mouseleave': 'clearAllItemStates',
+        'node:mouseleave': 'clearActiveState',
       };
     }
     return {
@@ -34,8 +34,6 @@ export default {
     const self = this;
     const activeState = this.get('activeState');
     const inactiveState = this.get('inactiveState');
-    const autoPaint = graph.get('autoPaint');
-    graph.setAutoPaint(false);
     graph.getNodes().forEach(node => {
       const hasSelected = node.hasState('selected');
       if (self.resetSelected) {
@@ -79,9 +77,32 @@ export default {
         edge.toFront();
       }
     });
+    graph.emit('afteractivaterelations', { item: e.item, action: 'activate' });
+  },
+  clearActiveState(e: any) {
+    const self = this;
+    const graph = self.get('graph');
+    if (!self.shouldUpdate(e.item, { event: e, action: 'deactivate' })) {
+      return;
+    }
+
+    const activeState = this.get('activeState');
+    const inactiveState = this.get('inactiveState');
+
+    const autoPaint = graph.get('autoPaint');
+    graph.setAutoPaint(false);
+    graph.getNodes().forEach(node => {
+      graph.clearItemStates(node, [activeState, inactiveState]);
+    });
+    graph.getEdges().forEach(edge => {
+      graph.clearItemStates(edge, [activeState, inactiveState, 'deactivate']);
+    });
     graph.paint();
     graph.setAutoPaint(autoPaint);
-    graph.emit('afteractivaterelations', { item: e.item, action: 'activate' });
+    graph.emit('afteractivaterelations', {
+      item: e.item || self.get('item'),
+      action: 'deactivate',
+    });
   },
   clearAllItemStates(e: any) {
     const self = this;
@@ -90,20 +111,15 @@ export default {
       return;
     }
 
-    const autoPaint = graph.get('autoPaint');
-    graph.setAutoPaint(false);
+    const activeState = this.get('activeState');
+    const inactiveState = this.get('inactiveState');
+
     graph.getNodes().forEach(node => {
-      const hasSelected = node.hasState('selected');
-      graph.clearItemStates(node);
-      if (hasSelected) {
-        graph.setItemState(node, 'selected', !self.resetSelected);
-      }
+      graph.clearItemStates(node, [activeState, inactiveState]);
     });
     graph.getEdges().forEach(edge => {
-      graph.clearItemStates(edge);
+      graph.clearItemStates(edge, [activeState, inactiveState, 'deactivate']);
     });
-    graph.paint();
-    graph.setAutoPaint(autoPaint);
     graph.emit('afteractivaterelations', {
       item: e.item || self.get('item'),
       action: 'deactivate',

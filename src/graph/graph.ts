@@ -2,6 +2,7 @@ import EventEmitter from '@antv/event-emitter';
 import { IGroup } from '@antv/g-base/lib/interfaces';
 import { BBox, Point } from '@antv/g-base/lib/types';
 import GCanvas from '@antv/g-canvas/lib/canvas';
+import GSVGCanvas from '@antv/g-svg/lib/canvas';
 import Group from '@antv/g-canvas/lib/group';
 import { mat3 } from '@antv/matrix-util/lib';
 import clone from '@antv/util/lib/clone';
@@ -47,6 +48,8 @@ import {
 import PluginBase from '../plugins/base';
 
 const NODE = 'node';
+const SVG = 'svg';
+const CANVAS = 'canvas';
 
 interface IGroupBBox {
   [key: string]: BBox;
@@ -135,12 +138,23 @@ export default class Graph extends EventEmitter implements IGraph {
 
     const width: number = this.get('width');
     const height: number = this.get('height');
+    const renderer: string = this.get('renderer');
 
-    const canvas = new GCanvas({
-      container,
-      width,
-      height,
-    });
+    let canvas;
+    
+    if(renderer === SVG) {
+      canvas = new GSVGCanvas({
+        container,
+        width,
+        height
+      });
+    } else {
+      canvas = new GCanvas({
+        container,
+        width,
+        height
+      });
+    }
 
     this.set('canvas', canvas);
 
@@ -215,6 +229,11 @@ export default class Graph extends EventEmitter implements IGraph {
        * unit pixel if undefined force fit height
        */
       height: undefined,
+      /**
+       * renderer canvas or svg
+       * @type {string}
+       */
+      renderer: 'canvas',
       /**
        * control graph behaviors
        */
@@ -294,7 +313,7 @@ export default class Graph extends EventEmitter implements IGraph {
        * 节点默认样式，也可以添加状态样式
        * 例如：
        * const graph = new G6.Graph({
-       *  nodeStateStyle: {
+       *  nodeStateStyles: {
        *    selected: { fill: '#ccc', stroke: '#666' },
        *    active: { lineWidth: 2 }
        *  },
@@ -517,8 +536,6 @@ export default class Graph extends EventEmitter implements IGraph {
     move(group, { x, y });
 
     this.emit('viewportchange', { action: 'move', matrix: group.getMatrix() });
-
-    this.autoPaint();
   }
 
   /**
@@ -533,7 +550,7 @@ export default class Graph extends EventEmitter implements IGraph {
     const viewController: ViewController = this.get('viewController');
     viewController.fitView();
 
-    this.paint();
+    this.autoPaint();
   }
 
   /**
@@ -588,11 +605,8 @@ export default class Graph extends EventEmitter implements IGraph {
     } else {
       mat3.scale(matrix, matrix, [ratio, ratio]);
     }
-
-    if (minZoom && matrix[0] < minZoom) {
-      return;
-    }
-    if (maxZoom && matrix[0] > maxZoom) {
+    
+    if ((minZoom && matrix[0] < minZoom) || (maxZoom && matrix[0] > maxZoom)) {
       return;
     }
 
@@ -717,8 +731,10 @@ export default class Graph extends EventEmitter implements IGraph {
    * @param {boolean} auto 自动重绘
    */
   public setAutoPaint(auto: boolean): void {
-    this.set('autoPaint', auto);
-    this.get('canvas').set('autoDraw', auto);
+    const self = this;
+    self.set('autoPaint', auto);
+    const canvas: GCanvas = self.get('canvas');
+    canvas.set('autoDraw', auto);
   }
 
   /**
@@ -776,7 +792,9 @@ export default class Graph extends EventEmitter implements IGraph {
       );
     }
     const itemController: ItemController = this.get('itemController');
-    return itemController.addItem(type, model);
+    const item = itemController.addItem(type, model);
+    this.autoPaint();
+    return item;
   }
 
   public add(type: ITEM_TYPE, model: ModelConfig): Item {
@@ -786,9 +804,9 @@ export default class Graph extends EventEmitter implements IGraph {
   /**
    * 更新元素
    * @param {Item} item 元素id或元素实例
-   * @param {EdgeConfig | NodeConfig} cfg 需要更新的数据
+   * @param {Partial<NodeConfig> | EdgeConfig} cfg 需要更新的数据
    */
-  public updateItem(item: Item | string, cfg: EdgeConfig | NodeConfig): void {
+  public updateItem(item: Item | string, cfg: Partial<NodeConfig> | EdgeConfig): void {
     const itemController: ItemController = this.get('itemController');
     itemController.updateItem(item, cfg);
   }
@@ -796,25 +814,33 @@ export default class Graph extends EventEmitter implements IGraph {
   /**
    * 更新元素
    * @param {Item} item 元素id或元素实例
-   * @param {EdgeConfig | NodeConfig} cfg 需要更新的数据
+   * @param {Partial<NodeConfig> | EdgeConfig} cfg 需要更新的数据
    */
-  public update(item: Item | string, cfg: EdgeConfig | NodeConfig): void {
+  public update(item: Item | string, cfg: Partial<NodeConfig> | EdgeConfig): void {
     this.updateItem(item, cfg);
   }
 
   /**
    * 设置元素状态
    * @param {Item} item 元素id或元素实例
-   * @param {string} state 状态
-   * @param {boolean} enabled 是否启用状态
+   * @param {string} state 状态名称
+   * @param {string | boolean} value 是否启用状态 或 状态值
    */
-  public setItemState(item: Item | string, state: string, enabled: boolean): void {
+  public setItemState(item: Item | string, state: string, value: string | boolean): void {
     if (isString(item)) {
       item = this.findById(item);
     }
 
-    this.get('itemController').setItemState(item, state, enabled);
-    this.get('stateController').updateState(item, state, enabled);
+    const itemController: ItemController = this.get('itemController')
+    itemController.setItemState(item, state, value);
+
+    const stateController: StateController = this.get('stateController')
+    
+    if(isString(value)) {
+      stateController.updateState(item, `${state}:${value}`, true);
+    } else {
+      stateController.updateState(item, state, value);
+    }
   }
 
   /**
@@ -841,8 +867,6 @@ export default class Graph extends EventEmitter implements IGraph {
     this.clear();
 
     this.emit('beforerender');
-    const autoPaint = this.get('autoPaint');
-    this.setAutoPaint(false);
 
     each(nodes, (node: NodeConfig) => {
       self.add('node', node);
@@ -879,10 +903,9 @@ export default class Graph extends EventEmitter implements IGraph {
 
     function success() {
       if (self.get('fitView')) {
-        self.get('viewController').fitView();
+        self.fitView();
       }
-      self.paint();
-      self.setAutoPaint(autoPaint);
+      self.autoPaint();
       self.emit('afterrender');
     }
 
@@ -960,7 +983,6 @@ export default class Graph extends EventEmitter implements IGraph {
       self.render();
     }
 
-    const autoPaint: boolean = this.get('autoPaint');
     const itemMap: NodeMap = this.get('itemMap');
 
     const items: {
@@ -970,8 +992,6 @@ export default class Graph extends EventEmitter implements IGraph {
       nodes: [],
       edges: [],
     };
-
-    this.setAutoPaint(false);
 
     this.diffItems('node', items, (data as GraphData).nodes!);
     this.diffItems('edge', items, (data as GraphData).edges!);
@@ -989,7 +1009,6 @@ export default class Graph extends EventEmitter implements IGraph {
     layoutController.changeData();
 
 
-    self.setAutoPaint(autoPaint);
     if (self.get('animate') && !layoutController.getLayoutType()) {
       // 如果没有指定布局
       self.positionsAnimate();
@@ -1081,7 +1100,6 @@ export default class Graph extends EventEmitter implements IGraph {
   public changeSize(width: number, height: number): Graph {
     const viewController: ViewController = this.get('viewController');
     viewController.changeSize(width, height);
-    this.autoPaint();
     return this;
   }
 
@@ -1090,8 +1108,6 @@ export default class Graph extends EventEmitter implements IGraph {
    */
   public refresh(): void {
     const self = this;
-    const autoPaint: boolean = self.get('autoPaint');
-    self.setAutoPaint(false);
 
     self.emit('beforegraphrefresh');
 
@@ -1110,7 +1126,6 @@ export default class Graph extends EventEmitter implements IGraph {
       });
     }
 
-    self.setAutoPaint(autoPaint);
 
     self.emit('aftergraphrefresh');
     self.autoPaint();
@@ -1307,8 +1322,22 @@ export default class Graph extends EventEmitter implements IGraph {
    */
   public toDataURL(): string {
     const canvas: GCanvas = this.get('canvas');
+    const renderer = canvas.getRenderer();
     const canvasDom = canvas.get('el');
-    const dataURL = canvasDom.toDataURL('image/png');
+
+    let dataURL = '';
+    if (renderer === 'svg') {
+      const clone = canvasDom.cloneNode(true);
+      const svgDocType = document.implementation.createDocumentType(
+        'svg', '-//W3C//DTD SVG 1.1//EN', 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'
+      );
+      const svgDoc = document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg', svgDocType);
+      svgDoc.replaceChild(clone, svgDoc.documentElement);
+      const svgData = (new XMLSerializer()).serializeToString(svgDoc);
+      dataURL = 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(svgData);
+    } else {
+      dataURL = canvasDom.toDataURL('image/png');
+    }
     return dataURL;
   }
 
@@ -1323,12 +1352,14 @@ export default class Graph extends EventEmitter implements IGraph {
       self.stopAnimate();
     }
 
-    const fileName: string = `${name || 'graph'}.png`;
+    const canvas = self.get('canvas');
+    const renderer = canvas.getRenderer();
+    const fileName: string = (name || 'graph') + (renderer === 'svg' ? '.svg' : '.png');
     const link: HTMLAnchorElement = document.createElement('a');
     setTimeout(() => {
       const dataURL = self.toDataURL();
       if (typeof window !== 'undefined') {
-        if (window.Blob && window.URL) {
+        if (window.Blob && window.URL && renderer !== 'svg') {
           const arr = dataURL.split(',');
           let mime = '';
           if (arr && arr.length > 0) {
@@ -1355,12 +1386,16 @@ export default class Graph extends EventEmitter implements IGraph {
               link.href = window.URL.createObjectURL(blobObj);
             });
           }
+        } else {
+          link.addEventListener('click', function() {
+            link.download = fileName;
+            link.href = dataURL;
+          });
         }
       }
 
       const e = document.createEvent('MouseEvents');
       e.initEvent('click', false, false);
-
       link.dispatchEvent(e);
     }, 16);
   }

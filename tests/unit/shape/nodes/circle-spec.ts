@@ -335,7 +335,7 @@ describe('circle test', () => {
       const node = nodes[0];
       const group = node.get('group');
       node.update({
-        label: 'new circle label',
+        label: '',
         labelCfg: {
           style: {
             fill: '#ff0',
@@ -347,9 +347,12 @@ describe('circle test', () => {
         return g.get('className') === 'node-label';
       });
       expect(label).not.toEqual(null);
-      expect(label.attr('text')).toEqual('new circle label');
+      expect(label.attr('text')).toEqual('');
       expect(label.attr('fill')).toEqual('#ff0');
 
+      node.update({
+        label: 'new circle label',
+      });
       // test if it will keep the current fill without setting
       node.update({
         labelCfg: {

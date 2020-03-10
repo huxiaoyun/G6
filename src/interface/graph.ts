@@ -72,6 +72,10 @@ export interface GraphOptions {
    * 指定画布高度，单位为 'px'
    */
   height: number;
+  /**
+   * renderer canvas or svg
+   */
+  renderer?: string,
 
   fitView?: boolean;
 
@@ -130,9 +134,17 @@ export interface GraphOptions {
     color?: string;
   } & ModelStyle;
 
-  nodeStateStyles?: { [key: string]: ShapeStyle };
+  nodeStateStyles?: { 
+    [key: string]: ShapeStyle | {
+      [key: string]: ShapeStyle
+    }
+  };
 
-  edgeStateStyles?: { [key: string]: ShapeStyle };
+  edgeStateStyles?: { 
+    [key: string]: ShapeStyle | {
+      [key: string]: ShapeStyle
+    }
+  };
 
   /**
    * 向 graph 注册插件。插件机制请见：plugin
@@ -232,6 +244,11 @@ export interface IGraph extends EventEmitter {
    * 仅画布重新绘制
    */
   paint(): void;
+  
+  /**
+   * 自动重绘
+   */
+  autoPaint(): void;
 
   /**
    * 刷新元素
@@ -285,17 +302,17 @@ export interface IGraph extends EventEmitter {
    * @param {Item} item 元素id或元素实例
    * @param {EdgeConfig | NodeConfig} cfg 需要更新的数据
    */
-  updateItem(item: Item | string, cfg: EdgeConfig | NodeConfig): void;
+  updateItem(item: Item | string, cfg: Partial<NodeConfig> | EdgeConfig): void;
 
-  update(item: Item | string, cfg: EdgeConfig | NodeConfig): void;
+  update(item: Item | string, cfg: Partial<NodeConfig> | EdgeConfig): void;
 
   /**
    * 设置元素状态
    * @param {Item} item 元素id或元素实例
-   * @param {string} state 状态
-   * @param {boolean} enabled 是否启用状态
+   * @param {string} state 状态名称
+   * @param {boolean} value 是否启用状态或状态值
    */
-  setItemState(item: Item | string, state: string, enabled: boolean): void;
+  setItemState(item: Item | string, state: string, value: string | boolean): void;
 
   /**
    * 设置视图初始化数据
