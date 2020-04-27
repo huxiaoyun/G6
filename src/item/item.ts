@@ -83,6 +83,7 @@ export default class ItemBase implements IItemBase {
     
     if (!id) {
       id = uniqueId(this.get('type'));
+      this.get('model').id = id
     }
     
     this.set('id', id);
@@ -152,7 +153,7 @@ export default class ItemBase implements IItemBase {
    * @param keyShape 图元素 keyShape
    * @param group Group 容器
    */
-  private setOriginStyle() {
+  private setOriginStyle(cfg?: ModelConfig) {
     const originStyles = {}
     const group: Group = this.get('group');
     const children = group.get('children')
@@ -175,7 +176,17 @@ export default class ItemBase implements IItemBase {
       }
     })
 
-    self.set('originStyle', originStyles);
+    const drawOriginStyle = this.getOriginStyle()
+    let styles = {}
+    if (cfg) {
+      styles = deepMix({}, drawOriginStyle, originStyles, cfg.style, {
+        labelCfg: cfg.labelCfg
+      })
+    } else {
+      styles = deepMix({}, drawOriginStyle, originStyles)
+    }
+
+    self.set('originStyle', styles);
   }
 
   /**
@@ -265,6 +276,25 @@ export default class ItemBase implements IItemBase {
 
     if (currentShape) {
       const styles: ShapeStyle & Indexable<any> = {};
+      // 这里要排除掉所有 states 中样式
+      const states = this.get('states')
+      states.map(state => {
+        const style = this.getStateStyle(state)
+        for (let key in style) {
+          if (!isPlainObject(style[key])) {
+            if (!RESERVED_STYLES.includes(key)) {
+              RESERVED_STYLES.push(key)
+            }
+          } else {
+            const subStyle = style[key]
+            for (let subKey in subStyle) {
+              if (!RESERVED_STYLES.includes(subKey)) {
+                RESERVED_STYLES.push(subKey)
+              }
+            }
+          }
+        }
+      })
       each(currentShape.attr(), (val, key) => {
         if (RESERVED_STYLES.indexOf(key) < 0) {
           styles[key] = val;
@@ -279,7 +309,9 @@ export default class ItemBase implements IItemBase {
     const styles = this.get('styles');
     if (styles) {
       // merge graph的item样式与数据模型中的样式
-      const newModel = Object.assign({}, model);
+      // const newModel = Object.assign({}, model);
+      // newModel.style = Object.assign({}, styles, model.style);
+      const newModel = model;
       newModel.style = Object.assign({}, styles, model.style);
       return newModel;
     }
@@ -373,9 +405,9 @@ export default class ItemBase implements IItemBase {
     const model: ModelConfig = self.get('model');
     const shape = model.shape || model.type;
     if (!states) {
-      console.warn(`clearItemStates 参数为空，则不清除任何状态`)
-      return;
+      states = originStates
     }
+
     if (isString(states)) {
       states = [states];
     }
@@ -516,7 +548,6 @@ export default class ItemBase implements IItemBase {
     // 2. 更新后的 shape 等于原先的 shape
     if (shapeFactory.shouldUpdate(shape) && shape === this.get('currentShape')) {
       const updateCfg = this.getShapeCfg(model);
-
       shapeFactory.update(shape, updateCfg, this);
     } else {
       // 如果不满足上面两种状态，重新绘制
@@ -524,7 +555,7 @@ export default class ItemBase implements IItemBase {
     }
 
     // 更新完以后重新设置原始样式
-    this.setOriginStyle()
+    this.setOriginStyle(model)
 
     // 更新后重置节点状态
     this.restoreStates(shapeFactory, shape);
@@ -537,8 +568,8 @@ export default class ItemBase implements IItemBase {
   public updatePosition(cfg: ModelConfig) {
     const model: ModelConfig = this.get('model');
 
-    const x = isNil(cfg.x) ? model.x : cfg.x;
-    const y = isNil(cfg.y) ? model.y : cfg.y;
+    let x = isNil(cfg.x) ? model.x : cfg.x;
+    let y = isNil(cfg.y) ? model.y : cfg.y;
 
     const group: Group = this.get('group');
 

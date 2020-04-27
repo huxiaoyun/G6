@@ -3,7 +3,7 @@ title: Graphics Shape Properties
 order: 0
 ---
 
-An item (node/edge) in G6 **Consists of One or More** [**Graphics Shape**](/en/docs/manual/middle/keyconcept/shape-keyshape). You can add shapes to a custom item by `group.addShape` in the `draw` function of registering item. The shapes in G6:
+An item (node/edge) in G6 **Consists of One or More** [**Graphics Shape**](/en/docs/manual/middle/elements/shape-keyshape). You can add shapes to a custom item by `group.addShape` in the `draw` function of registering item. The shapes in G6:
 
 - [circle](#circle);
 - [rect](#rect);
@@ -13,19 +13,23 @@ An item (node/edge) in G6 **Consists of One or More** [**Graphics Shape**](/en/d
 - [image](#image);
 - [marker](#marker);
 - [path](#path);
-- [text](#text).
+- [text](#text);
+- [dom(svg)](#dom-svg): DOM (available only when the `renderer` of Graph instance is `'svg'`).
 
 ## The Common Properties of Shapes
 
 | Name | Description | Remark |
 | --- | --- | --- |
-| fill | The color, gradient color, or the pattern for filling | Corresponds to the `fillStyle` of Canvas |
-| stroke | The color, gradient color, or pattern for the stroke | Corresponds to the `strokeStyle` of Canvas |
-| shadowColor | The color for shadow |  |
-| shadowBlur | The blur level for shadow | Larger the value, more blur |
-| shadowOffsetX | The horizontal offset of the shadow |  |
-| shadowOffsetY | The vertical offset of the shadow |  |
-| opacity | The opacity (alpha value) of the shape | Corresponds to the `globalAlpha` of Canvas |
+| fill | The color or gradient color for filling. | The corresponding property in canvas is `fillStyle`. |
+| stroke | The color, gradient color, or pattern for stroke. | The corresponding property in canvas is `strokeStyle`. |
+| lineWidth     | The width of the stroke  |                                |
+| lineDash     | The lineDash of the stroke  | Number[] are the lengths of the lineDash    |
+| shadowColor | The color for shadow. |  |
+| shadowBlur | The blur level for shadow. | Larger the value, more blur. |
+| shadowOffsetX | The horizontal offset of the shadow. |  |
+| shadowOffsetY | The vertical offset of the shadow. |  |
+| opacity | The opacity (alpha value) of the shape. | The corresponding property in canvas is `globalAlpha`. |
+| cursor        | The type of the mouse when hovering the node. The options are the same as [cursor in CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/cursor) |  |
 
 ### Usage
 
@@ -43,6 +47,38 @@ group.addShape('rect', {
   name: 'rect-shape',
 });
 ```
+
+
+## The Common Functions of Shapes
+
+### attr()
+
+Get or set the shape's attributes.
+
+### attr(name)
+
+Get the shape's attribute named `name`.
+
+``` javascript
+const width = shape.attr('width');
+```
+
+### attr(name, value)
+
+Update the shape's attribute named `name` with `value`.
+
+
+### attr({...})
+
+Update the shape's multiple attributes.
+
+```javascript
+rect.attr({
+    fill: '#999',
+    stroke: '#666'
+});
+```
+
 
 ## Circle
 
@@ -229,12 +265,16 @@ group.addShape('marker', {
 group.addShape('path', {
   attrs: {
     startArrow: {
-      path: 'M 10,0 L -10,-10 L -10,10 Z', // The custom arrow is a path centered at (0, 0), and points to the positive direction of x-axis
-      d: 10,
+      // The custom arrow is a path points at (0, 0), and its tail points to the positive direction of x-axis
+      path: 'M 0,0 L 20,10 L 20,-10 Z',
+      // the offset of the arrow, nagtive value means the arrow is moved alone the positive direction of x-axis
+      // d: -10
     },
     endArrow: {
-      path: 'M 10,0 L -10,-10 L -10,10 Z', // The custom arrow is a path centered at (0, 0), and points to the positive direction of x-axis
-      d: 10,
+      // The custom arrow is a path points at (0, 0), and its tail points to the positive direction of x-axis
+      path: 'M 0,0 L 20,10 L 20,-10 Z',
+      // the offset of the arrow, nagtive value means the arrow is moved alone the positive direction of x-axis
+      // d: -10
     },
     path: [
       ['M', 100, 100],
@@ -270,7 +310,7 @@ group.addShape('path', {
 | fontWeight | The font weight of the text. | The corresponding property in CSS is `font-weight` |
 | fontSize | The font size of the text. | The corresponding property in CSS is `font-size` |
 | fontFamily | The font family of the text. | The corresponding property in CSS is `font-family` |
-| autoRotate | Wheter rotate the text according to the edge automatically if it is a label of an edge. |  |
+| lineHeight | Line height of the text | The corresponding property in CSS is `line-height` |
 
 ### Usage
 
@@ -287,5 +327,41 @@ group.addShape('text', {
   },
   // must be assigned in G6 3.3 and later versions. it can be any value you want
   name: 'text-shape',
+});
+```
+
+
+## DOM (svg)
+
+> This shape is available only when the `renderer` is assgined to `'svg'` for graph instance.
+
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ Attention:</strong></span> If you custom a Node type or an Edge type with dom shape, please use the original DOM events instead of events of G6.
+
+### Properties
+
+| Name | Description | Remark |
+| --- | --- | --- |
+| html | The html value for DOM shape |  |
+
+### Usage
+
+```javascript
+group.addShape('dom', {
+  attrs: {
+    width: cfg.size[0],
+    height: cfg.size[1],
+    // DOM's html
+    html: `
+    <div style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${cfg.size[0]-5}px; height: ${cfg.size[1]-5}px; display: flex;">
+      <div style="height: 100%; width: 33%; background-color: #CDDDFD">
+        <img alt="" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
+      </div>
+      <span style="margin:auto; padding:auto; color: #5B8FF9">${cfg.label}</span>
+    </div>
+      `
+  },
+  // must be assigned in G6 3.3 and later versions. it can be any value you want
+  name: 'dom-shape',
+  draggable: true,
 });
 ```

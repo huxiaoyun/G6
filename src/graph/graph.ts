@@ -10,6 +10,7 @@ import deepMix from '@antv/util/lib/deep-mix';
 import each from '@antv/util/lib/each';
 import isPlainObject from '@antv/util/lib/is-plain-object';
 import isString from '@antv/util/lib/is-string';
+import isNumber from '@antv/util/lib/is-number';
 import {
   GraphAnimateConfig,
   GraphOptions,
@@ -46,6 +47,7 @@ import {
   ViewController,
 } from './controller';
 import PluginBase from '../plugins/base';
+import createDom from '@antv/dom-util/lib/create-dom';
 
 const NODE = 'node';
 const SVG = 'svg';
@@ -532,9 +534,7 @@ export default class Graph extends EventEmitter implements IGraph {
    */
   public moveTo(x: number, y: number): void {
     const group: Group = this.get('group');
-
     move(group, { x, y });
-
     this.emit('viewportchange', { action: 'move', matrix: group.getMatrix() });
   }
 
@@ -974,6 +974,10 @@ export default class Graph extends EventEmitter implements IGraph {
       return this;
     }
 
+    // 更改数据源后，取消所有状态
+    this.getNodes().map(node => self.clearItemStates(node))
+    this.getEdges().map(edge => self.clearItemStates(edge))
+
     const canvas = this.get('canvas');
     const localRefresh: boolean = canvas.get('localRefresh');
     canvas.set('localRefresh', false);
@@ -1320,10 +1324,12 @@ export default class Graph extends EventEmitter implements IGraph {
    * 返回图表的 dataUrl 用于生成图片
    * @return {string} 图片 dataURL
    */
-  public toDataURL(): string {
+  public toDataURL(type?: string, backgroundColor?: string): string {
     const canvas: GCanvas = this.get('canvas');
     const renderer = canvas.getRenderer();
     const canvasDom = canvas.get('el');
+
+    if (!type) type = 'image/png';
 
     let dataURL = '';
     if (renderer === 'svg') {
@@ -1336,16 +1342,118 @@ export default class Graph extends EventEmitter implements IGraph {
       const svgData = (new XMLSerializer()).serializeToString(svgDoc);
       dataURL = 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(svgData);
     } else {
-      dataURL = canvasDom.toDataURL('image/png');
+      let imageData;
+      const context = canvasDom.getContext('2d');
+      const width = this.get('width');
+      const height = this.get('height');
+      let compositeOperation;
+      if (backgroundColor) {
+        const pixelRatio = window.devicePixelRatio;
+        imageData = context.getImageData(0, 0, width * pixelRatio, height * pixelRatio);
+        compositeOperation = context.globalCompositeOperation;
+        context.globalCompositeOperation = "destination-over";
+        context.fillStyle = backgroundColor;
+        context.fillRect(0, 0, width, height);
+      }
+      dataURL = canvasDom.toDataURL(type);
+      if (backgroundColor) {
+        context.clearRect(0, 0, width, height);
+        context.putImageData(imageData, 0, 0);
+        context.globalCompositeOperation = compositeOperation;
+      }
     }
     return dataURL;
   }
 
   /**
-   * 画布导出图片
+   * 导出包含全图的图片
    * @param {String} name 图片的名称
    */
-  public downloadImage(name: string): void {
+  public downloadFullImage(name?: string, imageConfig?: { backgroundColor?: string, padding?: number | number[]}): void {
+    const bbox = this.get('group').getCanvasBBox();
+    const height = bbox.height;
+    const width = bbox.width;
+    const renderer = this.get('renderer');
+    const vContainerDOM = createDom('<div id="test"></div>');
+
+    let backgroundColor = imageConfig ? imageConfig.backgroundColor : undefined;
+    let padding = imageConfig ? imageConfig.padding : undefined;
+    if (!padding) padding = [ 0, 0, 0, 0 ];
+    else if (isNumber(padding)) padding = [padding, padding, padding, padding];
+
+    const vHeight = height + padding[0] + padding[2];
+    const vWidth = width + padding[1] + padding[3];
+    const canvasOptions = {
+      container: vContainerDOM,
+      height: vHeight,
+      width: vWidth
+    };
+    const vCanvas = renderer === 'svg' ? new GSVGCanvas(canvasOptions) : new GCanvas(canvasOptions);
+
+    const group = this.get('group');
+    const vGroup = group.clone();
+
+    let matrix = vGroup.getMatrix();
+    if (!matrix) matrix = mat3.create();
+    const centerX = (bbox.maxX + bbox.minX) / 2;
+    const centerY = (bbox.maxY + bbox.minY) / 2;
+    mat3.translate(matrix, matrix, [-centerX, -centerY]);
+    mat3.translate(matrix, matrix, [width / 2 + padding[3], height / 2 + padding[0]]);
+
+    vGroup.resetMatrix();
+    vGroup.setMatrix(matrix);
+    vCanvas.add(vGroup);
+
+    const vCanvasEl = vCanvas.get('el');
+
+    setTimeout(() => {
+      const type = 'image/png';
+      let dataURL = '';
+      if (renderer === 'svg') {
+        const clone = vCanvasEl.cloneNode(true);
+        const svgDocType = document.implementation.createDocumentType(
+          'svg', '-//W3C//DTD SVG 1.1//EN', 'http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd'
+        );
+        const svgDoc = document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg', svgDocType);
+        svgDoc.replaceChild(clone, svgDoc.documentElement);
+        const svgData = (new XMLSerializer()).serializeToString(svgDoc);
+        dataURL = 'data:image/svg+xml;charset=utf8,' + encodeURIComponent(svgData);
+      } else {
+        let imageData;
+        const context = vCanvasEl.getContext('2d');
+        let compositeOperation;
+        if (backgroundColor) {
+          const pixelRatio = window.devicePixelRatio;
+          imageData = context.getImageData(0, 0, vWidth * pixelRatio, vHeight * pixelRatio);
+          compositeOperation = context.globalCompositeOperation;
+          context.globalCompositeOperation = "destination-over";
+          context.fillStyle = backgroundColor;
+          context.fillRect(0, 0, vWidth, vHeight);
+        }
+        dataURL = vCanvasEl.toDataURL(type);
+        if (backgroundColor) {
+          context.clearRect(0, 0, vWidth, vHeight);
+          context.putImageData(imageData, 0, 0);
+          context.globalCompositeOperation = compositeOperation;
+        }
+      }
+
+      const link: HTMLAnchorElement = document.createElement('a');
+      const fileName: string = (name || 'graph') + (renderer === 'svg' ? '.svg' : '.png');
+  
+      this.dataURLToImage(dataURL, renderer, link, fileName);
+
+      const e = document.createEvent('MouseEvents');
+      e.initEvent('click', false, false);
+      link.dispatchEvent(e);
+    }, 16);
+  }
+
+  /**
+   * 画布导出图片，图片仅包含画布可见区域部分内容
+   * @param {String} name 图片的名称
+   */
+  public downloadImage(name?: string, backgroundColor?: string): void {
     const self = this;
 
     if (self.isAnimating()) {
@@ -1357,42 +1465,8 @@ export default class Graph extends EventEmitter implements IGraph {
     const fileName: string = (name || 'graph') + (renderer === 'svg' ? '.svg' : '.png');
     const link: HTMLAnchorElement = document.createElement('a');
     setTimeout(() => {
-      const dataURL = self.toDataURL();
-      if (typeof window !== 'undefined') {
-        if (window.Blob && window.URL && renderer !== 'svg') {
-          const arr = dataURL.split(',');
-          let mime = '';
-          if (arr && arr.length > 0) {
-            const match = arr[0].match(/:(.*?);/);
-            // eslint-disable-next-line prefer-destructuring
-            if (match && match.length >= 2) mime = match[1];
-          }
-
-          const bstr = atob(arr[1]);
-          let n = bstr.length;
-          const u8arr = new Uint8Array(n);
-
-          while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-          }
-
-          const blobObj = new Blob([u8arr], { type: mime });
-
-          if (window.navigator.msSaveBlob) {
-            window.navigator.msSaveBlob(blobObj, fileName);
-          } else {
-            link.addEventListener('click', () => {
-              link.download = fileName;
-              link.href = window.URL.createObjectURL(blobObj);
-            });
-          }
-        } else {
-          link.addEventListener('click', function() {
-            link.download = fileName;
-            link.href = dataURL;
-          });
-        }
-      }
+      const dataURL = self.toDataURL('image/png', backgroundColor);
+      this.dataURLToImage(dataURL, renderer, link, fileName);
 
       const e = document.createEvent('MouseEvents');
       e.initEvent('click', false, false);
@@ -1400,6 +1474,43 @@ export default class Graph extends EventEmitter implements IGraph {
     }, 16);
   }
 
+  private dataURLToImage(dataURL: string, renderer: string, link, fileName) {
+    if (typeof window !== 'undefined') {
+      if (window.Blob && window.URL && renderer !== 'svg') {
+        const arr = dataURL.split(',');
+        let mime = '';
+        if (arr && arr.length > 0) {
+          const match = arr[0].match(/:(.*?);/);
+          // eslint-disable-next-line prefer-destructuring
+          if (match && match.length >= 2) mime = match[1];
+        }
+
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+
+        const blobObj = new Blob([u8arr], { type: mime });
+
+        if (window.navigator.msSaveBlob) {
+          window.navigator.msSaveBlob(blobObj, fileName);
+        } else {
+          link.addEventListener('click', () => {
+            link.download = fileName;
+            link.href = window.URL.createObjectURL(blobObj);
+          });
+        }
+      } else {
+        link.addEventListener('click', function() {
+          link.download = fileName;
+          link.href = dataURL;
+        });
+      }
+    }
+  }
   /**
    * 更换布局配置项
    * @param {object} cfg 新布局配置项

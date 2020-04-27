@@ -55,14 +55,15 @@ The table below shows the built-in edges and their special properties:
 | stroke | false | String | The stroke color |
 | lineWidth | false | Number | The line width |
 | lineAppendWidth | false | Number | The width of the response area for interaction. In other words, when the edge is too thin to be hitted by mouse, enlarge the value of `lineWidth` to widen the response area |
-| endArrow | false | Boolean / Object | The arrow on the end of the edge. When `startArrow` is `true`, show a default arrow on the end of the edge. User can customize an arrow by path, e.g.:<br />endArrow: {<br /> path: 'M 10,0 L -10,-10 L -10,10 Z', // Customize the path for the arrow<br /> d: 10 // offset<br />} |
-| startArrow | false | Boolean / Object | The arrow on the start of the edge. When `startArrow` is `true`, show a default arrow on the start of the edge. User can customize an arrow by path, e.g.:<br />endArrow: {<br /> path: 'M 10,0 L -10,-10 L -10,10 Z', // Customize the path for the arrow<br /> d: 10 // offset<br />} |
+| endArrow | false | Boolean / Object | The arrow on the end of the edge. When `startArrow` is `true`, show a default arrow on the end of the edge. User can customize an arrow by path, e.g.:<br />endArrow: {<br /> path: 'M 0,0 L 20,10 L 20,-10 Z', // Customize the path for the arrow<br /> d: -2 // offset<br />} |
+| startArrow | false | Boolean / Object | The arrow on the start of the edge. When `startArrow` is `true`, show a default arrow on the start of the edge. User can customize an arrow by path, e.g.:<br />endArrow: {<br /> path: 'M 0,0 L 20,10 L 20,-10 Z', // Customize the path for the arrow<br /> d: -2 // offset<br />} |
 | strokeOpacity | false | Number | The stroke opacity |
 | shadowColor | false | String | The color of the shadow |
 | shadowBlur | false | Number | The blur degree of the shadow |
 | shadowOffsetX | false | Number | The x offset of the shadow |
 | shadowOffsetY | false | Number | The y offset of the shadow |
 | lineDash | false | Array | The style of the dash line. It is an array that describes the length of gaps and line segments. If the number of the elements in the array is odd, the elements will be dulplicated. Such as [5, 15, 25] will be regarded as [5, 15, 25, 5, 15, 25] |
+| cursor | false    | String | The type of the mouse when hovering the edge. The options are the same as [cursor in CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/cursor) |
 
 Configure `style` globally when instantiating the Graph:
 

@@ -50,7 +50,11 @@ const graph = new G6.Graph({
 
 - 含义：缩放画布；
 - `type: 'zoom-canvas'`；
-- `sensitivity`：缩放灵敏度，支持 1-10 的数值，默认灵敏度为 5。
+- `sensitivity`：缩放灵敏度，支持 1-10 的数值，默认灵敏度为 5；
+- `minZoom`：最小缩放比例；
+- `maxZoom`：最大缩放比例；
+- `enableOptimize`：是否开启性能优化，默认为 false，设置为 true 开启，开启后缩放比例小于 optimizeZoom 时自动隐藏非 keyShape；
+- `optimizeZoom`：当 enableOptimize 为 true 时起作用，默认值为 0.7，表示当缩放到哪个比例时开始隐藏非 keyShape。
 
 **提示：若要限定缩放尺寸，请在 graph 上设置  `minZoom`  和  `maxZoom`。**
 
@@ -132,6 +136,7 @@ const graph = new G6.Graph({
 - 含义：节点文本提示；
 - `type: 'tooltip'`；
 - `formatText(model)`：格式化函数，可以返回文本或者 HTML；
+- `offset`：tooltip 距离鼠标的偏移量。
 
 ```javascript
 const graph = new G6.Graph({
@@ -145,6 +150,7 @@ const graph = new G6.Graph({
         formatText(model) {
           return model.xxx;
         },
+        offset: 10
       },
     ],
   },
@@ -169,7 +175,8 @@ const graph = new G6.Graph({
 
 - 含义：边文本提示；
 - `type: 'edge-tooltip'`；
-- `formatText(model)`：格式化函数，可以返回文本或者 HTML。
+- `formatText(model)`：格式化函数，可以返回文本或者 HTML；
+- `offset`：tooltip 距离鼠标的偏移量。
 
 ### activate-relations
 
@@ -296,7 +303,8 @@ const graph = new G6.Graph({
 
 ### collapse-expand
 
-- 含义：只适用于树图，展开或收起节点；
+- 含义：只适用于树图，展开或收起子树；
+- 注意：若希望在首次布局时有默认收起的子树，则可以在数据中设置子树根节点的属性 `collapsed` 为 `true`。若希望使用代码控制子树的展开/收起，同样可以在数据中设置子树根节点的 `collapsed` 属性，并调用 `treeGraph.layout()` 使之生效；
 - `type: 'collapse-expand'`；
 - 参数：
   - `trigger`：收起和展开树图的方式，支持 `'click'` 和 `'dblclick'` 两种方式。默认为 `'click'`，即单击；

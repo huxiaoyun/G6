@@ -45,12 +45,14 @@ The table below shows the built-in nodes and their special properties:
 | fill          | false    | String | The filling color                             |
 | stroke        | false    | String | The stroke color                              |
 | lineWidth     | false    | Number | The line width of the stroke                  |
+| lineDash      | false    | Number[] | The lineDash of the stroke                  |
 | shadowColor   | false    | String | The shadow color                              |
 | shadowBlur    | false    | Number | The blur of the shadow                        |
 | shadowOffsetX | false    | Number | The x offset of the shadow                    |
 | shadowOffsetY | false    | Number | The y offset of the shadow                    |
 | opacity       | false    | Number | The alpha or transparency of the node         |
 | fillOpacity   | false    | Number | The filling alpha or transparency of the node |
+| cursor        | false    | String | The type of the mouse when hovering the node. The options are the same as [cursor in CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/cursor) |
 
 Configure `style` globally when instantiating the Graph:
 
@@ -78,7 +80,7 @@ const graph = new G6.Graph({
 | Name | Required | Type | Remark |
 | --- | --- | --- | --- |
 | position | false | String | The relative positions to the node. Options:  `'center'`, `'top'`, `'left'`, `'right'`, `'bottom'`. `'center'` by default |
-| offset | false | Number / Array | The offset of the label on the directions of `'top'`, `'left'`, `'right'`, `'bottom'` |
+| offset | false | Number | The offset value of the label. When the `position` is `'bottom'`, the value is the top offset of the node; When the `position` is `'left'`, the value is the right offset of the node; it is similar with other `position`. |
 | style | false | Object | The style property of the label |
 
 The commonly used configurations for the `style` in the above table are:

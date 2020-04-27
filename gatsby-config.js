@@ -35,7 +35,7 @@ module.exports = {
         },
       },
       {
-        slug: 'examples/tree/compactBox',
+        slug: 'examples',
         title: {
           zh: '图表演示',
           en: 'Examples',
@@ -105,6 +105,14 @@ module.exports = {
           en: 'Advanced',
         },
         order: 5,
+      },
+      {
+        slug: 'manual/advanced/keyconcept',
+        title: {
+          zh: '概念解释',
+          en: 'Concepts',
+        },
+        order: 0,
       },
       {
         slug: 'manual/cases',

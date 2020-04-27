@@ -40,6 +40,7 @@ The life cycle of an instance of Graph is: Initialize -> Load data -> Render -> 
 | groupType | String | circle | Group type for nodes. Options: `'circle'` or `'rect'`. |
 | groupStyle | Object |  | Group style for nodes, please refer to [Node Group](/en/docs/manual/middle/nodeGroup) for detail. |
 | layout | Object |  | Configurations for layout. The `type` in it is the name of layout method with the options: `'random'`, `'radial'`, `'mds'`, `'circular'`, `'fruchterman'`, `'force'`, `'dagre'`, `'concentric'`, `'grid'`. For more configurations for different layout methods, please refer to [Layout API](/en/docs/api/layout/Layout). |
+| renderer | String | 'canvas' / 'svg' | Render the graph with Canvas or SVG. It is supported expecting V3.3.x |
 
 <span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️Attention:</strong></span> In G6 3.1, we added two new configurations for graph: `nodeStateStyles` and `edgeStateStyles`. In the same time, we deleted `nodeStyle` and `edgeStyle` . To upgrate, replace `nodeStyle` with `nodeStateStyles`, and replace `edgeStyle` with `edgeStateStyles`, and keep the sub-configuration inside them.
 
@@ -207,7 +208,7 @@ Change the data source, and render the graph according to the new data.
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| data | Object | true | Graph data, it should be an object containing an array of nodes and an array of edges. |
+| data | Object | false | Graph data, it should be an object containing an array of nodes and an array of edges. If it is not assigned, the graph will be re-rendered with the current data on the graph |
 
 **Usage**
 
@@ -233,6 +234,9 @@ const data = {
 
 // graph is an instance of Graph
 graph.changeData(data);
+
+// If there is no parameter, the graph will be re-rendered with the current data on the graph
+graph.changeData();
 ```
 
 ### collapseGroup(groupId)
@@ -644,7 +648,7 @@ Clear the states of the item. This function could clear multiple states in the s
 | Name   | Type            | Required | Description                         |
 | ------ | --------------- | -------- | ----------------------------------- |
 | item   | String / Object | true     | The id or the instance of the item. |
-| states | String / Array  | null     | false                               | It can be a single state value, an array, or null. When it is null, this operation will clear the **first** state of the item. |
+| states | String / Array  | null     | false                               | It can be a single state value, an array, or null. When it is null, this operation will clear all state of the item. |
 
 **Usage**
 
@@ -814,6 +818,156 @@ Get the current mode.
 // The return value is the current interaction mode
 const mode = graph.getCurrentMode();
 ```
+
+
+
+### on(eventName, handler)
+
+Bind event listeners for graph.
+
+**Parameters**
+
+| Name | Type   | Required | Description       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | Name of the event, options are in [Event](/en/docs/api/Event) |
+| handler | Function | true     | The listener function |
+
+Here is the description for the objects `item` and `target` of the `handler`'s parameter `evt`:
+
+| Name | Type   | Required | Description       |
+| ---- | ------ | -------- | ---------- |
+| item | String | true     | The manipulated item |
+| target | Function | true     | The manipulated [Graphics Shape](/en/docs/manual/middle/elements/shape-keyshape) |
+
+
+
+**Usage**
+
+```javascript
+
+const graph = new G6.Graph({
+  // ...
+})
+
+// bind the node click listener for nodes of the graph
+graph.on('node:click', evt => {
+  const item = evt.item; // The manipulated node item
+  const target = evt.target; // The manipulated graphics shape
+  // ...
+});
+
+// bind the click listener for canvas
+graph.on('click', evt => {
+  // ...
+});
+```
+
+
+
+### off(eventName, handler)
+
+Unbind the specific listener.
+
+**Parameters**
+
+| Name | Type   | Required | Description       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | Name of the event, options are in [Event](/en/docs/api/Event) |
+| handler | Function | true     | The listener function |
+
+The objects `item` and `target` of the `handler`'s parameter `evt` are the same as the ones described in [`graph.on(eventName, handler)`](#oneventname-handler). The `handler` should be the same object of binded `handler`.
+
+
+
+**Usage**
+
+```javascript
+
+const graph = new G6.Graph({
+  // ...
+})
+
+// listeners
+const fn = evt => {
+  const item = evt.item; // The manipulated node item
+  const target = evt.target; // The manipulated graphics shape
+  // ...
+}
+// bind node click listener
+graph.on('node:click', fn);
+
+// Unbind the node click listener. The fn is the same object as above
+graph.off('node:click', fn);
+```
+
+
+
+### off(eventName)
+
+Unbind all the listeners for the graph.
+
+**Parameters**
+
+| Name | Type   | Required | Description       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | Name of the event, options are in [Event](/en/docs/api/Event) |
+
+
+
+**Usage**
+
+```javascript
+
+const graph = new G6.Graph({
+  // ...
+})
+
+// listeners
+const fn1 = evt => {
+  const item = evt.item; // the manipulated node item
+  const target = evt.target; // the manipulated graphics shape
+  // ...
+}
+const fn2 = evt => {
+  // ...
+}
+// bind two listeners for nodes of the graph
+graph.on('node:click', fn1);
+graph.on('node:click', fn2);
+
+// unbind all the click listeners
+graph.off('node:click');
+```
+
+
+### off()
+
+Unbind all the event listeners of the graph. There is no parameter for this function.
+
+**Usage**
+
+```javascript
+
+const graph = new G6.Graph({
+  // ...
+})
+
+// listeners
+const fn1 = evt => {
+  // ...
+}
+const fn2 = evt => {
+  // ...
+}
+// bind mouseenter listner for the nodes of the graph
+graph.on('node:mouseenter', fn1);
+// bind afteranimate timing listener for graph
+graph.on('afteranimate', fn2);
+
+// unbind all the events of the graph
+graph.off();
+```
+
 
 ### getZoom()
 
@@ -1320,7 +1474,36 @@ graph.set('customGroup', group);
 graph.set('nodeIdList', [1, 3, 5]);
 ```
 
-### downloadImage(name)
+
+
+### downloadFullImage(name, imageConfig)
+
+Export the whole graph as an image, whatever (a part of) the graph is out of the screen.
+
+**Parameters**
+
+| Name | Type   | Required | Description            |
+| ---- | ------ | -------- | ---------- |
+| name | String | false     | The name of the image. 'graph' by default. |
+| imageConfig | Object | false     | The configuration for the exported image, detials are shown below |
+
+where the `imageConfig` is the configuration for exported image:
+
+| Name | Type   | Required | Description            |
+| ---- | ------ | -------- | ---------- |
+| backgroundColor | String | false     | The background color of the image. If it is not assigned, the background will be transparent. |
+| padding | Number / Number[] | false     | The top, right, bottom, right paddings of the exported image. When its type is number, the paddings around the graph are the same |
+
+**Usage**
+
+```javascript
+graph.downloadFullImage('tree-graph', {
+  backgroundColor: '#ddd',
+  padding: [30, 15, 15, 15]
+});
+```
+
+### downloadImage(name, backgroundColor)
 
 Export the canvas as an image.
 
@@ -1328,7 +1511,8 @@ Export the canvas as an image.
 
 | Name | Type   | Required | Description            |
 | ---- | ------ | -------- | ---------------------- |
-| name | String | true     | The name of the image. |
+| name | String | false     | The name of the image. 'graph' by default. |
+| backgroundColor | String | false     | The background color of the image. If it is not assigned, the background will be transparent. |
 
 **Usage**
 
@@ -1339,6 +1523,13 @@ graph.downloadImage();
 ### toDataURL()
 
 Generate url of a image of the canvas.
+
+**Parameters**
+
+| Name | Type   | Required | Description            |
+| ---- | ------ | -------- | ---------- |
+| type | String | false     | The type of the image, options: `'image/png'`, `'image/jpeg'` |
+| backgroundColor | String | false     | The background color of the image. If it is not assigned, the background will be transparent. |
 
 **Return**
 

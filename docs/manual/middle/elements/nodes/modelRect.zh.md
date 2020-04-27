@@ -155,7 +155,7 @@ const graph = new G6.Graph({
 
 ### 描述文本配置  descriptionCfg
 
-⚠️**注意：** _将在 V3.3 版本后支持。_
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span> 在 V3.3 版本后支持。
 
 Object 类型。通过 `descriptionCfg` 配置标签文本。支持 [节点通用标签配置](/zh/docs/manual/middle/elements/nodes/defaultNode/#标签文本-label-及其配置-labelcfg)。此外，还有一个特殊属性：
 
@@ -187,7 +187,7 @@ const graph = new G6.Graph({
 
 Object 类型。通过配置 `linkPoints` ，可以指定 modelRect 周围「上、下、左、右」四个小圆点。
 
-<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span>区分于 `anchorPoints`： `anchorPoints` 是真正用于指定该节点相关边的连入位置的「**数组**」，见 [anchorPoints](/zh/docs/manual/middle/keyconcept/anchorpoint)；而 `linkPoints` 仅是指定是否「**绘制**」出四个圆点，不起实际的连接相关边的作用。二者常常配合使用。
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span>区分于 `anchorPoints`： `anchorPoints` 是真正用于指定该节点相关边的连入位置的「**数组**」，见 [anchorPoints](/zh/docs/manual/middle/elements/anchorpoint)；而 `linkPoints` 仅是指定是否「**绘制**」出四个圆点，不起实际的连接相关边的作用。二者常常配合使用。
 
 | 名称      | 含义               | 类型    | 备注               |
 | --------- | ------------------ | ------- | ------------------ |

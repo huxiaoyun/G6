@@ -40,8 +40,9 @@ Graph 的生命周期为：初始化—>加载数据—>渲染—>更新—>销�
 | groupType | String | circle | 节点分组类型，支持 circle 和 rect |
 | groupStyle | Object |  | groupStyle 用于指定分组的样式，详情参看 [节点分组 Group](/zh/docs/manual/middle/nodeGroup) 教程 |
 | layout | Object |  | 布局配置项，使用 type 字段指定使用的布局方式，type 可取以下值：random, radial, mds, circular, fruchterman, force, dagre，各布局详细的配置请参考  [Layout API 文档](/zh/docs/api/layout/Layout) |
+| renderer | String | 'canvas' / 'svg' | 渲染方式，该配置项除 V3.3.x 外其他版本均支持。 |
 
-<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span>6 3.1 版本中实例化 Graph 时，新增了  `nodeStateStyles` 及  `edgeStateStyles` 两个配置项，删除了 `nodeStyle` 和 `edgeStyle` ，使用 3.1 以下版本的同学，只需要将  `nodeStyle` 改成 `nodeStateStyles` ，将  `edgeStyle` 改成  `edgeStateStyles` ，配置内容保持不变。
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span>G6 3.1 版本中实例化 Graph 时，新增了 `nodeStateStyles` 及  `edgeStateStyles` 两个配置项，删除了 `nodeStyle` 和 `edgeStyle` ，使用 3.1 以下版本的同学，只需要将  `nodeStyle` 改成 `nodeStateStyles` ，将  `edgeStyle` 改成  `edgeStateStyles` ，配置内容保持不变。
 
 **用法**
 
@@ -209,7 +210,7 @@ graph.read(data);
 
 | 名称 | 类型   | 是否必选 | 描述                                     |
 | ---- | ------ | -------- | ---------------------------------------- |
-| data | Object | true     | 图数据，是一个包括 nodes 和 edges 的对象 |
+| data | Object | false     | 图数据，是一个包括 nodes 和 edges 的对象。若不指定该参数，则使用当前数据重新渲染 |
 
 **用法**
 
@@ -235,6 +236,8 @@ const data = {
 
 // graph是Graph的实例
 graph.changeData(data);
+// 若不指定该参数，则使用当前图上的数据重新渲染
+graph.changeData();
 ```
 
 ### collapseGroup(groupId)
@@ -627,24 +630,27 @@ graph.hideItem(item);
 graph.hideItem('nodeId');
 ```
 
-### setItemState(item, state, enabled)
+### setItemState(item, state, value)
 
 设置元素状态。
+支持单个状态多值的情况，详情参考 [G6 状态管理最佳实践](https://g6.antv.vision/zh/docs/manual/middle/states/state-new)。
 
 该方法在执行过程中会触发 `beforitemstatechange`，`afteritemstatechange` 事件。
 
 **参数**
 
 | 名称    | 类型            | 是否必选 | 描述                                                 |
-| ------- | --------------- | -------- | ---------------------------------------------------- |
-| item    | String / Object | true     | 元素 ID 或元素实例                                   |
+| ------- | --------------- | -------- | ----------- |
+| item    | String / Item | true     | 元素 ID 或元素实例 |
 | state   | String          | true     | 状态值，支持自定义，如 selected、hover、actived 等。 |
-| enabled | Boolean         | true     | 是否启用状态                                         |
+| value | Boolean / String   | true     | 是否启用状态 |
 
 **用法**
 
 ```javascript
 graph.setItemState('node1', 'selected', true);
+
+graph.setItemState('node1', 'body', 'health');
 ```
 
 ### clearItemStates(item, states)
@@ -656,7 +662,7 @@ graph.setItemState('node1', 'selected', true);
 | 名称   | 类型            | 是否必选 | 描述               |
 | ------ | --------------- | -------- | ------------------ |
 | item   | String / Object | true     | 元素 ID 或元素实例 |
-| states | String / Array  | null     | false              | 取值可以是单个状态值，也可以是状态值数组或 `null`，当为 `null` 时，清除该元素的**第一个**状态。 |
+| states | String / Array  | null     | false              | 取值可以是单个状态值，也可以是状态值数组 |
 
 **用法**
 
@@ -667,7 +673,7 @@ graph.clearItemStates(node, 'a');
 // 清除多个状态
 graph.clearItemStates(node, ['a', 'b']);
 
-// 清除所有状态
+// 清除所有
 graph.clearItemStates(node);
 ```
 
@@ -828,6 +834,138 @@ graph.setMode('custom')
 // 返回值 mode 表示当前的行为模式
 const mode = graph.getCurrentMode();
 ```
+
+
+### on(eventName, handler)
+
+为图绑定事件监听。
+
+**参数**
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | 事件名，可选事件名参见 [Event](/zh/docs/api/Event) |
+| handler | Function | true     | 监听函数 |
+
+这里对 `handler` 的参数 `evt` 中 `item` 和 `target` 参数进行解释：
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| item | String | true     | 被操作的 item |
+| target | Function | true     | 被操作的具体[图形](/zh/docs/manual/middle/elements/shape-keyshape) |
+
+
+
+**用法**
+
+```javascript
+// 为图上的所有节点绑定点击监听
+graph.on('node:click', evt => {
+  const item = evt.item; // 被操作的节点 item
+  const target = evt.target; // 被操作的具体图形
+  // ...
+});
+
+// 为画布绑定点击监听
+graph.on('click', evt => {
+  // ...
+});
+```
+
+
+
+### off(eventName, handler)
+
+为图解除指定的事件监听。
+
+**参数**
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | 事件名，可选事件名参见 [Event](/zh/docs/api/Event) |
+| handler | Function | true     | 监听函数 |
+
+这里对 `handler` 的参数 `evt` 中 `item` 和 `target` 同 [`graph.on(eventName, handler)`](#oneventname-handler)。该 `handler` 必须与绑定该事件的 `handler` 是同一对象。
+
+
+
+**用法**
+
+```javascript
+
+// 监听函数
+const fn = evt => {
+  const item = evt.item; // 被操作的节点 item
+  const target = evt.target; // 被操作的具体图形
+  // ...
+}
+// 为图上的所有节点绑定点击监听
+graph.on('node:click', fn);
+
+// 解除上面的点击监听事件，注意 fn 必须是同一个对象
+graph.off('node:click', fn);
+```
+
+
+
+### off(eventName)
+
+为图解除某事件的所有监听。
+
+**参数**
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| eventName | String | true     | 事件名，可选事件名参见 [Event](/zh/docs/api/Event) |
+
+
+
+**用法**
+
+```javascript
+
+// 监听函数
+const fn1 = evt => {
+  const item = evt.item; // 被操作的节点 item
+  const target = evt.target; // 被操作的具体图形
+  // ...
+}
+const fn2 = evt => {
+  // ...
+}
+// 为图上的所有节点绑定点击监听
+graph.on('node:click', fn1);
+graph.on('node:click', fn2);
+
+// 解除上面的所有节点点击监听事件
+graph.off('node:click');
+```
+
+
+### off()
+
+为图解除所有监听。该函数无参数。
+
+
+**用法**
+
+```javascript
+
+// 监听函数
+const fn1 = evt => {
+  // ...
+}
+const fn2 = evt => {
+  // ...
+}
+// 为图上的所有节点绑定点击监听
+graph.on('node:mouseenter', fn1);
+graph.on('afteranimate', fn2);
+
+// 解除图上所有监听事件
+graph.off();
+```
+
 
 ### getZoom()
 
@@ -1338,7 +1476,8 @@ graph.set('customGroup', group);
 graph.set('nodeIdList', [1, 3, 5]);
 ```
 
-### downloadImage(name)
+
+### downloadFullImage(name, imageConfig)
 
 将画布上的元素导出为图片。
 
@@ -1346,7 +1485,36 @@ graph.set('nodeIdList', [1, 3, 5]);
 
 | 名称 | 类型   | 是否必选 | 描述       |
 | ---- | ------ | -------- | ---------- |
-| name | String | true     | 图片的名称 |
+| name | String | false     | 图片的名称，不指定则为 'graph' |
+| imageConfig | Object | false     | 图片的配置项，可选，具体字段见下方 |
+
+其中，imageConfig 为导出图片的配置参数：
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| backgroundColor | String | false     | 图片的背景色，可选，不传值时将导出透明背景的图片 |
+| padding | Number / Number[] | false     | 导出图片的上左下右 padding 值。当 `padding` 为 number 类型时，四周 `padding` 相等 |
+
+**用法**
+
+```javascript
+graph.downloadFullImage('tree-graph', {
+  backgroundColor: '#ddd',
+  padding: [30, 15, 15, 15]
+});
+```
+
+
+### downloadImage(name, backgroundColor)
+
+将画布上的元素导出为图片。
+
+**参数**
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| name | String | false     | 图片的名称，不指定则为 'graph' |
+| backgroundColor | String | false     | 图片的背景色，可选，不传值时将导出透明背景的图片 |
 
 **用法**
 
@@ -1354,9 +1522,16 @@ graph.set('nodeIdList', [1, 3, 5]);
 graph.downloadImage();
 ```
 
-### toDataURL()
+### toDataURL(type, backgroundColor)
 
 将画布上元素生成为图片的 URL。
+
+**参数**
+
+| 名称 | 类型   | 是否必选 | 描述       |
+| ---- | ------ | -------- | ---------- |
+| type | String | false     | 图片类型，可选值：`'image/png'`，`'image/jpeg'` |
+| backgroundColor | String | false     | 图片的背景色，可选，不传值时将导出透明背景的图片 |
 
 **返回值**
 

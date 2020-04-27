@@ -60,6 +60,7 @@ export type ShapeStyle = Partial<{
   shadowOffsetX: number;
   shadowOffsetY: number;
   cursor: string;
+  position: string;
 }>;
 
 export interface IShapeBase extends ShapeBase {
@@ -93,11 +94,17 @@ export type LoopConfig = Partial<{
 // model types (node edge group)
 export type ModelStyle = Partial<{
   [key: string]: unknown;
-  style: ShapeStyle;
+  style:
+    | ShapeStyle
+    | {
+        [key: string]: ShapeStyle;
+      };
   stateStyles: {
-    [key: string]: ShapeStyle | {
-      [key: string]: ShapeStyle
-    }
+    [key: string]:
+      | ShapeStyle
+      | {
+          [key: string]: ShapeStyle;
+        };
   };
   // loop edge config
   loopCfg: LoopConfig;
@@ -122,6 +129,16 @@ export type LabelStyle = Partial<{
   shadowBlur?: number;
   shadowOffsetX?: number;
   shadowOffsetY?: number;
+  position: string;
+  textBaseline: string;
+  offset: number;
+  background?: {
+    fill?: string;
+    stroke?: string;
+    lineWidth?: number;
+    radius?: number[] | number;
+    padding?: number[] | number;
+  };
 }>;
 
 export type Easeing =
@@ -206,9 +223,7 @@ export interface ModelConfig extends ModelStyle {
     x?: number;
     y?: number;
     // clip 的属性样式
-    style?: {
-      lineWidth?: number;
-    };
+    // style?: ShapeStyle
   };
   innerR?: number;
   direction?: string;
@@ -216,10 +231,12 @@ export interface ModelConfig extends ModelStyle {
   endPoint?: IPoint;
   children?: TreeGraphData[];
   stateStyles?: {
-    [key: string]: ShapeStyle | {
-      [key: string]: ShapeStyle
-    }
-  }
+    [key: string]:
+      | ShapeStyle
+      | {
+          [key: string]: ShapeStyle;
+        };
+  };
 }
 
 export interface NodeConfig extends ModelConfig {
@@ -241,7 +258,8 @@ export interface EdgeConfig extends ModelConfig {
   endPoint?: IPoint;
   controlPoints?: IPoint[];
   color?: string;
-  curveOffset?: number;
+  curveOffset?: number | number[];
+  curvePosition?: number | number[];
 }
 
 export type EdgeData = EdgeConfig & {
@@ -284,9 +302,9 @@ export interface TreeGraphData {
   y?: number;
   children?: TreeGraphData[];
   data?: ModelConfig;
-  side?: 'left' | 'right',
+  side?: 'left' | 'right';
   depth?: number;
-  collapsed ?: boolean;
+  collapsed?: boolean;
 }
 
 // Behavior type file
@@ -352,7 +370,7 @@ export interface BehaviorOption {
   shouldEnd?(e?: IG6GraphEvent): boolean;
   bind?(e: IGraph): void;
   unbind?(e: IGraph): void;
-  [key: string]: (...args) => any;
+  [key: string]: unknown;
 }
 
 export type IEvent = Record<G6Event, string>;

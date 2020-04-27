@@ -6,155 +6,35 @@ const data = {
   nodes: [
     {
       id: '1',
-      type: 'alps',
-      name: 'alps_file1',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name1',
     },
     {
       id: '2',
-      type: 'alps',
-      name: 'alps_file2',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name2',
     },
     {
       id: '3',
-      type: 'alps',
-      name: 'alps_file3',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name3',
     },
     {
       id: '4',
-      type: 'sql',
-      name: 'sql_file1',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name4',
     },
     {
       id: '5',
-      type: 'sql',
-      name: 'sql_file2',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name5',
     },
     {
       id: '6',
-      type: 'feature_etl',
-      name: 'feature_etl_1',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name6',
     },
     {
       id: '7',
-      type: 'feature_etl',
-      name: 'feature_etl_1',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name7',
     },
     {
       id: '8',
-      type: 'feature_extractor',
-      name: 'feature_extractor',
-      conf: [
-        {
-          label: 'conf',
-          value: 'pai_graph.conf',
-        },
-        {
-          label: 'dot',
-          value: 'pai_graph.dot',
-        },
-        {
-          label: 'init',
-          value: 'init.rc',
-        },
-      ],
+      name: 'name8',
     },
   ],
   edges: [
@@ -254,7 +134,7 @@ const DagreLayout = () => {
           type: 'sql',
         },
         defaultEdge: {
-          type: 'polyline',
+          type: 'cubic',
           style: {
             radius: 20,
             offset: 45,
@@ -292,6 +172,11 @@ const DagreLayout = () => {
       });
       graph.data(data);
       graph.render();
+
+      graph.on('canvas:click', e => {
+        console.log(graph.toDataURL('image/jpeg', '#fff'));
+        graph.downloadImage('test', '#eee');
+      });
     }
   });
   return <div ref={container}></div>;

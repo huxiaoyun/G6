@@ -1,4 +1,19 @@
 import G6 from '@antv/g6';
+import insertCss from 'insert-css';
+
+// 我们用 insert-css 演示引入自定义样式
+// 推荐将样式添加到自己的样式文件中
+// 若拷贝官方代码，别忘了 npm install insert-css
+insertCss(`
+  .g6-tooltip {
+    border-radius: 6px;
+    font-size: 12px;
+    color: #fff;
+    background-color: #000;
+    padding: 2px 8px;
+    text-align: center;
+  }
+`);
 
 const data = {
   nodes: [
@@ -228,10 +243,6 @@ G6.registerNode(
   },
   'single-node',
 );
-G6.Global.nodeStateStyle.selected = {
-  stroke: '#d9d9d9',
-  fill: '#5394ef',
-};
 
 const width = document.getElementById('container').scrollWidth;
 const height = document.getElementById('container').scrollHeight || 500;
@@ -248,6 +259,7 @@ const graph = new G6.Graph({
       return 50;
     },
     ranksep: 70,
+    controlPoints: true
   },
   defaultNode: {
     type: 'sql',
@@ -261,6 +273,12 @@ const graph = new G6.Graph({
       lineWidth: 2,
       stroke: '#C2C8D5',
     },
+  },
+  nodeStateStyles: {
+    selected: {
+      stroke: '#d9d9d9',
+      fill: '#5394ef',
+    }
   },
   modes: {
     default: [
@@ -277,13 +295,7 @@ const graph = new G6.Graph({
           });
           return text.join('\n');
         },
-        shouldUpdate: e => {
-          // 如果移动到节点文本上显示，不是文本上不显示
-          if (e.target.type !== 'text') {
-            return false;
-          }
-          return true;
-        },
+        offset: 30
       },
     ],
   },

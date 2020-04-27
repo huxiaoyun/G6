@@ -27,6 +27,8 @@ export interface IModeOption {
   enableDelegate?: boolean;
   maxZoom?: number;
   minZoom?: number;
+  enableOptimize?: boolean;
+  optimizeZoom?: number;
   multiple?: boolean;
   selectedState?: string;
   includeEdges?: boolean;
@@ -98,9 +100,7 @@ export interface GraphOptions {
   directed?: boolean;
 
   groupStyle?: {
-    style?: {
-      [key: string]: ShapeStyle;
-    };
+    [key: string]: ShapeStyle;
   };
 
   /**
@@ -492,13 +492,19 @@ export interface IGraph extends EventEmitter {
   /**
    * 返回图表的 dataUrl 用于生成图片
    */
-  toDataURL(): string;
+  toDataURL(type?: string, backgroundColor?: string): string;
 
   /**
-   * 画布导出图片
+   * 画布导出图片，图片仅包含画布可见区域部分内容
    * @param {String} name 图片的名称
    */
-  downloadImage(name: string): void;
+  downloadImage(name?: string, backgroundColor?: string): void;
+
+  /**
+   * 导出包含全图的图片
+   * @param {String} name 图片的名称
+   */
+  downloadFullImage(name?: string, imageConfig?: { backgroundColor?: string, padding?: number | number[]}): void;
 
   // TODO 需要添加布局配置类型
   /**

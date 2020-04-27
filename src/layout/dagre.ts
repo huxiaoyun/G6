@@ -10,7 +10,7 @@ import { BaseLayout } from './layout';
 import { isNumber } from '@antv/util';
 
 /**
- * 随机布局
+ * 层次布局
  */
 export default class DagreLayout extends BaseLayout {
   /** layout 方向, 可选 TB, BT, LR, RL */
@@ -39,7 +39,7 @@ export default class DagreLayout extends BaseLayout {
       ranksepFunc: undefined, // 每一层节点之间间距
       nodesep: 50, // 节点水平间距(px)
       ranksep: 50, // 每一层节点之间间距
-      controlPoints: true, // 是否保留布局连线的控制点
+      controlPoints: false, // 是否保留布局连线的控制点
     };
   }
 
@@ -88,8 +88,8 @@ export default class DagreLayout extends BaseLayout {
     });
     edges.forEach(edge => {
       // dagrejs Wiki https://github.com/dagrejs/dagre/wiki#configuring-the-layout
-      g.setEdge(edge.source, edge.target, { 
-        weight: edge.weight || 1 
+      g.setEdge(edge.source, edge.target, {
+        weight: edge.weight || 1
       });
     });
     dagre.layout(g);
@@ -103,7 +103,7 @@ export default class DagreLayout extends BaseLayout {
     g.edges().forEach((edge: any) => {
       coord = g.edge(edge);
       const i = edges.findIndex(it => it.source === edge.v && it.target === edge.w);
-      if (self.controlPoints) {
+      if (self.controlPoints && edges[i].type !== 'loop' && edges[i].shape !== 'loop') {
         edges[i].controlPoints = coord.points.slice(1, coord.points.length - 1);
       }
     });

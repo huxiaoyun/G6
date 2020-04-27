@@ -3,7 +3,7 @@ title: 图形 Shape 及其属性
 order: 0
 ---
 
-G6 中的元素（节点/边）是**由一个或多个**[**图形 Shape**](/zh/docs/manual/middle/keyconcept/shape-keyshape)**组成**，主要通过自定义节点或自定义边时在 `draw` 方法中使用 `group.addShape` 添加，G6 中支持以下的图形 Shape：
+G6 中的元素（节点/边）是**由一个或多个**[**图形 Shape**](/zh/docs/manual/middle/elements/shape-keyshape)**组成**，主要通过自定义节点或自定义边时在 `draw` 方法中使用 `group.addShape` 添加，G6 中支持以下的图形 Shape：
 
 - [circle](#圆图形-circle)：圆；
 - [rect](#矩形图形-rect)：矩形；
@@ -12,20 +12,25 @@ G6 中的元素（节点/边）是**由一个或多个**[**图形 Shape**](/zh/d
 - [fan](#扇形图形-fan)：扇形；
 - [image](#图片图形-image)：图片；
 - [marker](#标记图形-marker)：标记；
-- [path](#路径-path)：路径。
+- [path](#路径-path)：路径；
 - [text](#文本-text)：文本；
+- [dom(svg)](#dom-svg)：DOM（图渲染方式 `renderer` 为 `'svg'` 时可用）。
 
 ## 各图形 Shape 的通用属性
 
-| 属性名 | 含义 | 备注 |
-| --- | --- | --- |
-| fill | 设置用于填充的颜色、[渐变](/zh/docs/manual/FAQ/gradient)或[纹理](/zh/docs/manual/FAQ/texture)模式 | 对应 Canvas 属性 `fillStyle` |
-| stroke | 设置用于笔触的颜色或[渐变](/zh/docs/manual/FAQ/gradient)模式 | 对应 Canvas 属性 `strokeStyle` |
-| shadowColor | 设置用于阴影的颜色 |  |
-| shadowBlur | 设置用于阴影的模糊级别 | 数值越大，越模糊 |
-| shadowOffsetX | 设置阴影距形状的水平距离 |  |
-| shadowOffsetY | 设置阴影距形状的垂直距离 |  |
-| opacity | 设置绘图的当前 alpha 或透明值 | 对应 Canvas 属性 `globalAlpha` |
+| 属性名        | 含义                               | 备注                           |
+| ------------- | ---------------------------------- | ------------------------------ |
+| fill          | 设置用于填充绘画的颜色、渐变或模式 | 对应 Canvas 属性 `fillStyle`   |
+| stroke        | 设置用于笔触的颜色、渐变或模式     | 对应 Canvas 属性 `strokeStyle` |
+| lineWidth     | 描边宽度                           |                                |
+| lineDash     | 描边虚线  | Number[] 类型代表实、虚长度    |
+| shadowColor   | 设置用于阴影的颜色                 |                                |
+| shadowBlur    | 设置用于阴影的模糊级别             | 数值越大，越模糊               |
+| shadowOffsetX | 设置阴影距形状的水平距离           |                                |
+| shadowOffsetY | 设置阴影距形状的垂直距离           |                                |
+| opacity       | 设置绘图的当前 alpha 或透明值      | 对应 Canvas 属性 `globalAlpha` |
+| fillOpacity   | 设置填充的 alpha 或透明值          |                                |
+| cursor      | 鼠标在该节点上时的鼠标样式，[CSS 的 cursor](https://developer.mozilla.org/en-US/docs/Web/CSS/cursor) 选项都支持  |  |
 
 ### 用法
 
@@ -258,12 +263,16 @@ group.addShape('marker', {
 group.addShape('path', {
   attrs: {
     startArrow: {
-      path: 'M 10,0 L -10,-10 L -10,10 Z', // 自定义箭头为中心点在(0, 0)，指向 x 轴正方向的 path
-      d: 10,
+      // 自定义箭头指向(0, 0)，尾部朝向 x 轴正方向的 path
+      path: 'M 0,0 L 20,10 L 20,-10 Z',
+      // 箭头的偏移量，负值代表向 x 轴正方向移动
+      // d: -10,
     },
     endArrow: {
-      path: 'M 10,0 L -10,-10 L -10,10 Z', // 自定义箭头为中心点在(0, 0)，指向 x 轴正方向的 path
-      d: 10,
+      // 自定义箭头指向(0, 0)，尾部朝向 x 轴正方向的 path
+      path: 'M 0,0 L 20,10 L 20,-10 Z',
+      // 箭头的偏移量，负值代表向 x 轴正方向移动
+      // d: -10,
     },
     path: [
       ['M', 100, 100],
@@ -299,6 +308,7 @@ group.addShape('path', {
 | fontWeight | 字体粗细 | 对应 `font-weight` |
 | fontSize | 字体大小 | 对应 `font-size` |
 | fontFamily | 字体系列 | 对应 `font-family` |
+| lineHeight | 行高 | 对应 `line-height` |
 
 ### 用法
 
@@ -315,5 +325,42 @@ group.addShape('text', {
   },
   // must be assigned in G6 3.3 and later versions. it can be any value you want
   name: 'text-shape',
+});
+```
+
+
+
+## DOM (svg)
+
+> 仅在 Graph 的 `renderer` 为 `'svg'` 时可以使用。
+
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span> 使用 dom 进行自定义的节点或边，不支持 G6 的交互事件，请使用原生 DOM 的交互事件。
+
+### 特殊属性
+
+| 属性名 | 含义 | 备注 |
+| --- | --- | --- |
+| html | DOM 的 html 值 |  |
+
+### 用法
+
+```javascript
+group.addShape('dom', {
+  attrs: {
+    width: cfg.size[0],
+    height: cfg.size[1],
+    // DOM's html
+    html: `
+    <div style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${cfg.size[0]-5}px; height: ${cfg.size[1]-5}px; display: flex;">
+      <div style="height: 100%; width: 33%; background-color: #CDDDFD">
+        <img alt="" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
+      </div>
+      <span style="margin:auto; padding:auto; color: #5B8FF9">${cfg.label}</span>
+    </div>
+      `
+  },
+  // must be assigned in G6 3.3 and later versions. it can be any value you want
+  name: 'dom-shape',
+  draggable: true,
 });
 ```

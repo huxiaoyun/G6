@@ -5,9 +5,14 @@ order: 2
 
 G6 提供了一系列[内置节点](/zh/docs/manual/middle/elements/nodes/defaultNode)，包括 [circle](/zh/docs/manual/middle/elements/nodes/circle)、[rect](/zh/docs/manual/middle/elements/nodes/rect)、[diamond](/zh/docs/manual/middle/elements/nodes/diamond)、[triangle](/zh/docs/manual/middle/elements/nodes/triangle)、[star](/zh/docs/manual/middle/elements/nodes/star)、[image](/zh/docs/manual/middle/elements/nodes/image)、[modelRect](/zh/docs/manual/middle/elements/nodes/modelRect)。若内置节点无法满足需求，用户还可以通过 `G6.registerNode('nodeName', options)` 进行自定义节点，方便用户开发更加定制化的节点，包括含有复杂图形的节点、复杂交互的节点、带有动画的节点等。
 
-在本章中我们会通过四个案例，从简单到复杂讲解节点的自定义。这四个案例是： <br /> <strong>1. 从无到有的定义节点：</strong>绘制图形；优化性能。 <br /> <strong>2. 扩展现有的节点：</strong>附加图形；增加动画。 <br /> <strong>3. 调整节点的锚点；</strong> <br /> <strong>4. 调整节点的鼠标选中/悬浮样式。</strong>样式变化响应；动画响应。
+在本章中我们会通过五个案例，从简单到复杂讲解节点的自定义。这五个案例是：
+ <br /> <strong>1. 从无到有的定义节点：</strong>绘制图形；优化性能。 
+<br /> <strong>2. 扩展现有的节点：</strong>附加图形；增加动画。
+ <br /> <strong>3. 调整节点的锚点；</strong>
+ <br /> <strong>4. 调整节点的鼠标选中/悬浮样式：</strong>样式变化响应；动画响应；
+ <br /> <strong>5. 使用 DOM 自定义节点。</strong>
 
-通过 [图形 Shape](/zh/docs/manual/middle/keyconcept/shape-keyshape) 章节的学习，我们应该已经知道了自定义节点时需要满足以下两点：
+通过 [图形 Shape](/zh/docs/manual/middle/elements/shape-keyshape) 章节的学习，我们应该已经知道了自定义节点时需要满足以下两点：
 
 - 控制节点的生命周期；
 - 解析用户输入的数据，在图形上展示。
@@ -67,14 +72,19 @@ G6.registerNode(
      */
     getAnchorPoints(cfg) {},
   },
-  extendNodeName,
+  // 继承内置节点类型的名字，例如基类 'single-node'，或 'circle', 'rect' 等
+  // 当不指定该参数则代表不继承任何内置节点类型
+  extendNodeName, 
 );
 ```
 
 <span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"> &nbsp;&nbsp;<strong>⚠️ 注意:</strong></span>
 
 - 如果不从任何现有的节点扩展新节点时，`draw` 方法是必须的；
-- `update` 方法可以不定义，数据更新时会走 `draw` 方法，所有图形清除重绘；
+- 节点内部所有图形**使用相对于节点自身的坐标系**，即 `(0, 0)` 是该节点的中心。而节点的坐标是相对于画布的，由该节点 group 上的矩阵控制，自定义节点中不需要用户感知。若在自定义节点内增加 `rect` 图形，要注意让它的 x 与 y 各减去其长与宽的一半。详见例子 [从无到有定义节点](#1-从无到有定义节点)；
+- `update` 方法可以不定义：
+  - 当 `update` 未定义：若指定了 `registerNode` 的第三个参数 `extendNodeName`（即代表继承指定的内置节点类型），则节点更新时将执行被继承的内置节点类型的 `update` 逻辑；若未指定 `registerNode` 的第三个参数，则节点更新时会执行 `draw` 方法，所有图形清除重绘；
+  - 当定义了 `update` 方法，则不论是否指定 `registerNode` 的第三个参数，在节点更新时都会执行复写的 `update` 函数逻辑。
 - `afterDraw`，`afterUpdate` 方法一般用于扩展已有的节点，例如：在矩形节点上附加图片，圆节点增加动画等；
 - `setState` 方法一般也不需要复写，有全局的样式可以替换；
 - `getAnchorPoints` 方法仅在需要限制与边的连接点时才需要复写，也可以在数据中直接指定。
@@ -88,6 +98,8 @@ G6.registerNode(
 > G6 有内置的菱形节点 diamond。为了演示，这里实现了一个自定义的菱形，相当于复写了内置的 diamond。
 
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*LqFCRaKyr0gAAAAAAAAAAABkARQnAQ' alt='img' width='80'/>
+
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"> &nbsp;&nbsp;<strong>⚠️ 注意:</strong></span> 从下面代码可以看出，自定义节点中所有通过 `addShape` 增加的图形的坐标都是**相对于节点自身的子坐标系**，即 `(0, 0)` 是该节点的中心。如 `'text'` 图形的 `x` 和 `y` 均为 0，代表该图形相对于该节点居中；`'path'` 图形 `path` 属性中的坐标也是以 `(0, 0)` 为原点计算的。换句话说，在**自定义节点时不需要感知相对于画布的节点坐标**，节点坐标由该节点所在 group 的矩阵控制。
 
 ```javascript
 G6.registerNode('diamond', {
@@ -146,7 +158,7 @@ G6.registerNode('diamond', {
 });
 ```
 
-上面的代码自定义了一个菱形节点。值得注意的是，G6 3.3 需要用户为自定义节点中的图形设置 `name` 和 `draggable`。其中，`name` 可以是不唯一的任意值。`draggable` 为 true 是表示允许该图形响应鼠标的拖拽事件，只有 `draggable: true` 时，图上的交互行为 `'drag-node'` 才能在该图形上生效。若上面代码仅在 keyShape 上设置了 `draggable: true`，而 label 图形上没有设置，则鼠标拖拽只能在 keyShape 上响应。
+上面的代码自定义了一个菱形节点。值得注意的是，G6 3.3 需要用户为自定义节点中的图形设置 `name` 和 `draggable`。其中，`name` 可以是不唯一的任意值。`draggable` 为 `true` 是表示允许该图形响应鼠标的拖拽事件，只有 `draggable: true` 时，图上的交互行为 `'drag-node'` 才能在该图形上生效。若上面代码仅在 keyShape 上设置了 `draggable: true`，而 label 图形上没有设置，则鼠标拖拽只能在 keyShape 上响应。
 
 现在，我们使用下面的数据输入就会绘制出 diamond 这个节点。
 
@@ -178,7 +190,7 @@ graph.render();
 
 在实现 diamond 的过程中，重写  `update` 方法，找到需要更新的 shape 进行更新，从而优化性能。寻找需要更新的图形可以通过：
 
-- `group.get('children')[0]` 找到 [关键图形  keyShape](/zh/docs/manual/middle/keyconcept/shape-keyshape#keyshape)，也就是 `draw` 方法返回的 shape；
+- `group.get('children')[0]` 找到 [关键图形  keyShape](/zh/docs/manual/middle/elements/shape-keyshape#keyshape)，也就是 `draw` 方法返回的 shape；
 - `group.get('children')[1]` 找到 label 图形。
 
 下面代码仅更新了 diamond 的关键图形的路径和颜色。
@@ -302,7 +314,7 @@ G6.registerNode('inner-animate', {
 
 ## 3. 调整锚点 anchorPoint
 
-节点上的[锚点 anchorPoint](/zh/docs/manual/middle/keyconcept/anchorpoint) 作用是**确定节点与边的相交的位置**，看下面的场景：<br />
+节点上的[锚点 anchorPoint](/zh/docs/manual/middle/elements/anchorpoint) 作用是**确定节点与边的相交的位置**，看下面的场景：<br />
 
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*mJ85Q5WRJLwAAAAAAAAAAABkARQnAQ' alt='img' width='200'/>
 <img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*99aSR5zbd44AAAAAAAAAAABkARQnAQ' alt='img' width='200'/>
@@ -442,4 +454,91 @@ graph.on('node:mouseleave', ev => {
   const node = ev.item;
   graph.setItemState(node, 'running', false);
 });
+```
+
+
+
+## 5. 使用 DOM 自定义节点
+
+> SVG 与 DOM 图形在 V3.3.x 中不支持。
+
+这里，我们演示使用 DOM 自定义一个名为 `'dom-node'` 的节点。在 `draw` 方法中使用 `group.addShape` 增加一个 `'dom'` 类型的图形，并设置其 `html` 为 DOM 的 `html` 值。
+
+<img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*VgQlQK1MdbIAAAAAAAAAAABkARQnAQ' alt='img' width='120'/>
+
+```javascript
+G6.registerNode('dom-node', {
+  draw: (cfg: ModelConfig, group: Group) => {
+    return group.addShape('dom', {
+      attrs: {
+        width: cfg.size[0],
+        height: cfg.size[1],
+        // 传入 DOM 的 html
+        html: `
+        <div style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${cfg.size[0]-5}px; height: ${cfg.size[1]-5}px; display: flex;">
+          <div style="height: 100%; width: 33%; background-color: #CDDDFD">
+            <img alt="" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
+          </div>
+          <span style="margin:auto; padding:auto; color: #5B8FF9">${cfg.label}</span>
+        </div>
+          `
+      },
+      draggable: true
+    });
+  },
+}, 'single-node');
+```
+
+上面的代码自定义了一个名为 `'dom-node'` 的带有 DOM 的节点。值得注意的是，G6 3.3 需要用户为自定义节点中的图形设置 `name` 和 `draggable`。其中，`name` 可以是不唯一的任意值。`draggable` 为 `true` 是表示允许该图形响应鼠标的拖拽事件，只有 `draggable: true` 时，图上的交互行为 `'drag-node'` 才能在该图形上生效。
+
+现在，我们使用下面的数据输入就会绘制出带有 `'dom-node'` 节点的图。
+
+<img src='https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*coxYTo3zEecAAAAAAAAAAABkARQnAQ' alt='img' width='300'/>
+
+```javascript
+const data = {
+  nodes: [
+    { id: 'node1', x: 50, y: 100 },
+    { id: 'node2', x: 150, y: 100 },
+  ],
+  edges: [
+    source: 'node1',
+    target: 'node2'
+  ]
+};
+const graph = new G6.Graph({
+  container: 'mountNode',
+  width: 500,
+  height: 500,
+  defaultNode: {
+    type: 'dom-node',
+    size: [120, 40]
+  }
+});
+graph.data(data);
+graph.render();
+```
+
+<span style="background-color: rgb(251, 233, 231); color: rgb(139, 53, 56)"><strong>⚠️ 注意:</strong></span> G6 的节点/边事件不支持 DOM 类型的图形。如果需要为 DOM 节点绑定事件，请使用原生 DOM 事件。例如：
+```javascript
+G6.registerNode('dom-node', {
+  draw: (cfg: ModelConfig, group: Group) => {
+    return group.addShape('dom', {
+      attrs: {
+        width: cfg.size[0],
+        height: cfg.size[1],
+        // 传入 DOM 的 html，带有原生 onclick 事件
+        html: `
+        <div onclick="alert('Hi')" style="background-color: #fff; border: 2px solid #5B8FF9; border-radius: 5px; width: ${cfg.size[0]-5}px; height: ${cfg.size[1]-5}px; display: flex;">
+          <div style="height: 100%; width: 33%; background-color: #CDDDFD">
+            <img alt="" style="line-height: 100%; padding-top: 6px; padding-left: 8px;" src="https://gw.alipayobjects.com/mdn/rms_f8c6a0/afts/img/A*Q_FQT6nwEC8AAAAAAAAAAABkARQnAQ" width="20" height="20" />  
+          </div>
+          <span style="margin:auto; padding:auto; color: #5B8FF9">${cfg.label}</span>
+        </div>
+          `
+      },
+      draggable: true
+    });
+  },
+}, 'single-node');
 ```

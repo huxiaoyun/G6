@@ -18,6 +18,44 @@ describe('graph', () => {
       default: ['drag-node'],
     },
   });
+  const data = {
+    nodes: [
+      {
+        id: 'node1',
+        x: 150,
+        y: 50,
+        label: 'node1',
+      },
+      {
+        id: 'node2',
+        x: 200,
+        y: 150,
+        label: 'node2',
+      },
+      {
+        id: 'node3',
+        x: 100,
+        y: 150,
+        label: 'node3',
+      },
+    ],
+    edges: [
+      {
+        source: 'node1',
+        target: 'node2',
+      },
+      {
+        source: 'node2',
+        target: 'node3',
+      },
+      {
+        source: 'node3',
+        target: 'node1',
+      },
+    ],
+  };
+  globalGraph.data(data);
+  globalGraph.render();
 
   it('invalid container', () => {
     expect(() => {
@@ -160,16 +198,15 @@ describe('graph', () => {
 
   it('moveTo', () => {
     let group = globalGraph.get('group');
-    expect(group.get('x')).toBe(undefined);
-    expect(group.get('y')).toBe(undefined);
+    let bbox = group.getCanvasBBox();
+
     globalGraph.moveTo(100, 100);
 
     group = globalGraph.get('group');
-    const matrix = globalGraph.get('group').getMatrix();
+    bbox = group.getCanvasBBox();
 
-    expect(matrix).not.toBe(null);
-    expect(group.get('x')).toBe(100);
-    expect(group.get('y')).toBe(100);
+    expect(bbox.x).toBe(100);
+    expect(bbox.y).toBe(100);
 
     globalGraph.get('group').resetMatrix();
   });
@@ -837,7 +874,7 @@ describe('all node link center', () => {
     expect(graph.findAllByState('node', 'b').length).toBe(0);
   });
 
-  it.only('default node & edge style', () => {
+  it('default node & edge style', () => {
     const defaultGraph = new Graph({
       container: div,
       width: 500,
@@ -1158,9 +1195,9 @@ describe('mapper fn', () => {
     graph.setItemState(node, 'custom', true);
     expect(keyShape.attr('green'));
 
+    // clear all states of  the item
     graph.clearItemStates(node);
-    // green
-    expect(keyShape.attr('fill')).toEqual('green');
+    expect(keyShape.attr('fill')).toEqual('#666');
 
     const edge = graph.addItem('edge', { id: 'edge2', source: 'node', target: 'node2Mapped' });
 
@@ -1372,7 +1409,52 @@ describe('auto rotate label on edge', () => {
     const groupMatrix = group.attr('matrix');
     expect(groupMatrix[0]).toBe(0.5);
     expect(groupMatrix[4]).toBe(0.5);
-    expect(groupMatrix[6]).toBe(100);
-    expect(groupMatrix[7]).toBe(120);
+    const bbox = graph.get('group').getCanvasBBox();
+    expect(bbox.x).toBe(100);
+    expect(bbox.y).toBe(120);
+  });
+});
+
+
+describe('auto rotate label on edge', () => {
+  const graph = new Graph({
+    container: div,
+    width: 500,
+    height: 500,
+    modes: {
+      default: ['drag-node', 'zoom-canvas', 'drag-canvas'],
+    },
+  });
+  const data = {
+    nodes: [
+      {
+        id: 'node1',
+        x: 100,
+        y: 200,
+      },
+      {
+        id: 'node2',
+        x: 800,
+        y: 200,
+      },
+    ],
+    edges: [
+      {
+        id: 'edge1',
+        target: 'node2',
+        source: 'node1',
+      },
+    ],
+  };
+
+  it('downloadFullImage', () => {
+    graph.data(data);
+    graph.render();
+    graph.on('canvas:click', evt => {
+      graph.downloadFullImage('graph', {
+        backgroundColor: '#fff',
+        padding: [ 40, 10, 10, 10 ]
+      });
+    });
   });
 });

@@ -131,7 +131,8 @@ With the configuration above, users are allowed to select more than one nodes wh
 
 - Description: The tooltip for node;
 - `type: 'tooltip'`;
-- `formatText(model)`: Format function, returns a text string or an HTML element.
+- `formatText(model)`: Format function, returns a text string or an HTML element;
+- `offset`：the offset of the tooltip to the mouse.
 
 ```javascript
 const graph = new G6.Graph({
@@ -145,6 +146,7 @@ const graph = new G6.Graph({
         formatText(model) {
           return model.xxx;
         },
+        offset: 10
       },
     ],
   },
@@ -169,7 +171,8 @@ The usage of edge-tooltip is similar to tooltip. It will be activated when the u
 
 - Description: The tooltip for edge;
 - `type: 'edge-tooltip'`;
-- `formatText(model)`: Format function, returns a text string or an HTML element.
+- `formatText(model)`: Format function, returns a text string or an HTML element;
+- `offset`：the offset of the tooltip to the mouse.
 
 ### activate-relations
 
@@ -296,7 +299,8 @@ It is a solution to put these two conflicting events into two mdoes. They will b
 
 ### collapse-expand
 
-- Description: Collapse or expand a subtree on a treeGraph
+- Description: Collapse or expand a subtree on a treeGraph;
+- Attension: If you want to collapse a subtree by default when render the Graph in the first time, you can assign `collapsed: true` to the root of the subtree in its data. If you want to control the subtree to collapse/expand by code, you can also assign the `collapsed` for the root of the subtree and call `treeGraph.layout()` to make it take effect;
 - `type: 'collapse-expand'`;
 - Configuration:
   - `trigger`: The operation for collapsing and expanding. Options: `click` and `dblclick`. `click` by default;
